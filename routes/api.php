@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Attendence\AttendenceController;
 use App\Http\Controllers\Employee\EmployeeController;
 use App\Http\Controllers\Expense\ExpenseController;
+use App\Http\Controllers\Leads\LeadController;
 use App\Http\Controllers\VisitorInvited\VisiterInviteController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -46,3 +47,9 @@ Route::post('visitor-invite/create', [VisiterInviteController::class, 'store']);
 Route::get('visitor-invite/{id}', [VisiterInviteController::class, 'show']);
 Route::put('visitor-invite/update/{id}', [VisiterInviteController::class, 'update']);
 Route::delete('visitor-invite/delete/{id}', [VisiterInviteController::class, 'destroy']);
+
+Route::get('leads', [LeadController::class, 'index']);
+Route::post('lead/create', [LeadController::class, 'store']);
+Route::get('lead/{id}', [LeadController::class, 'show']);
+Route::put('lead/update/{id}', [LeadController::class, 'update']);
+Route::delete('lead/delete/{id}', [LeadController::class, 'destroy']);
