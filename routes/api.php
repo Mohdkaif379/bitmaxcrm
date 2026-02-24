@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\ChangeAdminCredential\AdminCredentialController;
 use App\Http\Controllers\Attendence\AttendenceController;
 use App\Http\Controllers\Employee\EmployeeController;
 use App\Http\Controllers\Expense\ExpenseController;
@@ -19,6 +20,7 @@ Route::post('admin/create', [AdminController::class, 'store']);
 // Route::get('admins/{id}', [AdminController::class, 'show']);
 Route::put('admin/profile', [AdminController::class, 'update']);
 Route::delete('admin/profile', [AdminController::class, 'destroy']);
+Route::put('admin/password/update', [AdminCredentialController::class, 'updatePassword']);
 
 Route::get('employees', [EmployeeController::class, 'index']);
 Route::post('employee/create', [EmployeeController::class, 'store']);

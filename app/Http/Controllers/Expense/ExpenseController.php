@@ -22,10 +22,30 @@ class ExpenseController extends Controller
 
         $validated = $request->validate([
             'search' => ['nullable', 'string', 'max:255'],
+            'period' => ['nullable', 'in:daily,weekly,monthly,yearly'],
         ]);
 
         $query = Expenses::with('creator');
         $search = trim((string) ($validated['search'] ?? ''));
+        $period = $validated['period'] ?? null;
+
+        if (!empty($period)) {
+            $now = now();
+
+            if ($period === 'daily') {
+                $query->whereDate('date', $now->toDateString());
+            } elseif ($period === 'weekly') {
+                $query->whereBetween('date', [
+                    $now->copy()->startOfWeek()->toDateString(),
+                    $now->copy()->endOfWeek()->toDateString(),
+                ]);
+            } elseif ($period === 'monthly') {
+                $query->whereYear('date', $now->year)
+                    ->whereMonth('date', $now->month);
+            } elseif ($period === 'yearly') {
+                $query->whereYear('date', $now->year);
+            }
+        }
 
         if ($search !== '') {
             $query->where(function ($builder) use ($search) {
