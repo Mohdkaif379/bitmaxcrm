@@ -299,6 +299,8 @@ class SalarySlipController extends Controller
             'holiday' => 0,
             'absent' => 0,
         ];
+        $totalDaysInMonth = 0;
+        $payableDays = 0.0;
 
         if ($monthNumber !== null) {
             $attendanceRecords = Attendence::query()
@@ -314,7 +316,29 @@ class SalarySlipController extends Controller
                     $attendanceSummary[$status]++;
                 }
             }
+
+            $totalDaysInMonth = Carbon::create((int) $salarySlip->year, $monthNumber, 1)->daysInMonth;
+            $payableDays = (float) $attendanceSummary['present']
+                + (float) $attendanceSummary['holiday']
+                + ((float) $attendanceSummary['halfday'] * 0.5);
         }
+
+        $basicSalary = (float) ($payroll?->basic_salary ?? 0);
+        $hra = (float) ($payroll?->hra ?? 0);
+        $medicalAllowance = (float) ($payroll?->medical_allowance ?? 0);
+        $conveyanceAllowance = (float) ($payroll?->conveyance_allowance ?? 0);
+        $grossSalary = $basicSalary + $hra + $medicalAllowance + $conveyanceAllowance;
+        $perDaySalary = $totalDaysInMonth > 0 ? ($grossSalary / $totalDaysInMonth) : 0;
+        $totalAttendanceEntries = array_sum($attendanceSummary);
+        $grossPayableSalary = $totalAttendanceEntries > 0
+            ? round($perDaySalary * $payableDays, 2)
+            : round($grossSalary, 2);
+        $totalDeductions = round(
+            (float) collect($salarySlip->deductions ?? [])->sum(fn ($item) => (float) ($item['amount'] ?? 0)),
+            2
+        );
+        $netSalary = round($grossPayableSalary - $totalDeductions, 2);
+        $finalSalaryPayable = round(max($netSalary, 0), 2);
 
         $base['employee_code'] = $employee?->emp_code;
         $base['joining_date'] = $employee && !empty($employee->joining_date)
@@ -338,6 +362,16 @@ class SalarySlipController extends Controller
             'hra' => $payroll?->hra,
             'medical_allowance' => $payroll?->medical_allowance,
             'conveyance_allowance' => $payroll?->conveyance_allowance,
+        ];
+        $base['salary_calculation'] = [
+            'total_days_in_month' => $totalDaysInMonth,
+            'payable_days' => $payableDays,
+            'per_day_salary' => round($perDaySalary, 2),
+            'gross_salary' => round($grossSalary, 2),
+            'gross_payable_salary' => $grossPayableSalary,
+            'total_deductions' => $totalDeductions,
+            'net_salary' => $netSalary,
+            'final_salary_payable' => $finalSalaryPayable,
         ];
 
         return $base;
