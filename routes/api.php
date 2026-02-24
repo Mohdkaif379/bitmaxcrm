@@ -8,6 +8,7 @@ use App\Http\Controllers\Expense\ExpenseController;
 use App\Http\Controllers\Leads\LeadController;
 use App\Http\Controllers\LeadInteraction\LeadInteractionController;
 use App\Http\Controllers\Proposal\ProposalController;
+use App\Http\Controllers\StockManagement\StockManagementController;
 use App\Http\Controllers\Task\TaskController;
 use App\Http\Controllers\VisitorInvited\VisiterInviteController;
 use Illuminate\Http\Request;
@@ -72,3 +73,9 @@ Route::post('task/create', [TaskController::class, 'store']);
 Route::get('task/{id}', [TaskController::class, 'show']);
 Route::put('task/update/{id}', [TaskController::class, 'update']);
 Route::delete('task/delete/{id}', [TaskController::class, 'destroy']);
+
+Route::get('stocks', [StockManagementController::class, 'index']);
+Route::post('stock/create', [StockManagementController::class, 'store']);
+Route::get('stock/{id}', [StockManagementController::class, 'show']);
+Route::put('stock/update/{id}', [StockManagementController::class, 'update']);
+Route::delete('stock/delete/{id}', [StockManagementController::class, 'destroy']);
