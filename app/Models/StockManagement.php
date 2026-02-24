@@ -8,3 +8,4 @@ class StockManagement extends Model
 {
     protected $table = 'stock_managements';
 }
+

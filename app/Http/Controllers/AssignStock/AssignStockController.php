@@ -26,7 +26,7 @@ class AssignStockController extends Controller
         $validated = $request->validate([
             'search' => ['nullable', 'string', 'max:255'],
             'employee_id' => ['nullable', 'integer', 'exists:employees,id'],
-            'stock_management_id' => ['nullable', 'integer', 'exists:stock_management,id'],
+            'stock_management_id' => ['nullable', 'integer', 'exists:stock_managements,id'],
             'assign_date' => ['nullable', 'date'],
         ]);
 
@@ -91,7 +91,7 @@ class AssignStockController extends Controller
 
         $validated = $request->validate([
             'employee_id' => ['required', 'integer', 'exists:employees,id'],
-            'stock_management_id' => ['required', 'integer', 'exists:stock_management,id'],
+            'stock_management_id' => ['required', 'integer', 'exists:stock_managements,id'],
             'assign_quantity' => ['required', 'integer', 'min:1'],
             'assign_date' => ['required', 'date'],
             'remarks' => ['nullable', 'string'],
@@ -191,7 +191,7 @@ class AssignStockController extends Controller
 
         $validated = $request->validate([
             'employee_id' => ['sometimes', 'required', 'integer', 'exists:employees,id'],
-            'stock_management_id' => ['sometimes', 'required', 'integer', 'exists:stock_management,id'],
+            'stock_management_id' => ['sometimes', 'required', 'integer', 'exists:stock_managements,id'],
             'assign_quantity' => ['sometimes', 'required', 'integer', 'min:1'],
             'assign_date' => ['sometimes', 'required', 'date'],
             'remarks' => ['nullable', 'string'],
