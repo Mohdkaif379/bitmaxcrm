@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('assign_stocks', function (Blueprint $table) {
             $table->id();
             $table->foreignId('employee_id')->constrained('employees')->cascadeOnDelete();
-            $table->foreignId('stock_management_id')->constrained('stock_management')->cascadeOnDelete();
+            $table->foreignId('stock_management_id')->constrained('stock_managements')->cascadeOnDelete();
             $table->unsignedInteger('assign_quantity')->default(1);
             $table->date('assign_date');
             $table->text('remarks')->nullable();
