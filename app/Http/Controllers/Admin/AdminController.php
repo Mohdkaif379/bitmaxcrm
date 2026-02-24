@@ -149,23 +149,23 @@ class AdminController extends Controller
         ], 201);
     }
 
-    // public function show($id)
-    // {
-    //     $admin = Admin::find($id);
+    public function show($id)
+    {
+        $admin = Admin::find($id);
 
-    //     if (!$admin) {
-    //         return response()->json([
-    //             'status' => false,
-    //             'message' => 'Admin not found.',
-    //         ], 404);
-    //     }
+        if (!$admin) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Admin not found.',
+            ], 404);
+        }
 
-    //     return response()->json([
-    //         'status' => true,
-    //         'message' => 'Admin fetched successfully.',
-    //         'data' => $this->transformAdmin($admin),
-    //     ]);
-    // }
+        return response()->json([
+            'status' => true,
+            'message' => 'Admin fetched successfully.',
+            'data' => $this->transformAdmin($admin),
+        ]);
+    }
 
     public function update(Request $request)
     {
