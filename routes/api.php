@@ -86,10 +86,3 @@ Route::get('assign-stocks', [AssignStockController::class, 'index']);
 Route::post('assign-stock/create', [AssignStockController::class, 'store']);
 Route::get('assign-stock/{id}', [AssignStockController::class, 'show']);
 Route::put('assign-stock/update/{id}', [AssignStockController::class, 'update']);
-Route::delete('assign-stock/delete/{id}', [AssignStockController::class, 'destroy']);
-
-Route::get('activities', [ActivityController::class, 'index']);
-Route::post('activity/create', [ActivityController::class, 'store']);
-Route::get('activity/{id}', [ActivityController::class, 'show']);
-Route::put('activity/update/{id}', [ActivityController::class, 'update']);
-Route::delete('activity/delete/{id}', [ActivityController::class, 'destroy']);
