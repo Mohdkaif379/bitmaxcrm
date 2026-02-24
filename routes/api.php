@@ -10,6 +10,7 @@ use App\Http\Controllers\Expense\ExpenseController;
 use App\Http\Controllers\Leads\LeadController;
 use App\Http\Controllers\LeadInteraction\LeadInteractionController;
 use App\Http\Controllers\Proposal\ProposalController;
+use App\Http\Controllers\SalarySlip\SalarySlipController;
 use App\Http\Controllers\StockManagement\StockManagementController;
 use App\Http\Controllers\Task\TaskController;
 use App\Http\Controllers\VisitorInvited\VisiterInviteController;
@@ -93,3 +94,9 @@ Route::post('activity/create', [ActivityController::class, 'store']);
 Route::get('activity/{id}', [ActivityController::class, 'show']);
 Route::put('activity/update/{id}', [ActivityController::class, 'update']);
 Route::delete('activity/delete/{id}', [ActivityController::class, 'destroy']);
+
+Route::get('salary-slips', [SalarySlipController::class, 'index']);
+Route::post('salary-slip/create', [SalarySlipController::class, 'store']);
+Route::get('salary-slip/{id}', [SalarySlipController::class, 'show']);
+Route::put('salary-slip/update/{id}', [SalarySlipController::class, 'update']);
+Route::delete('salary-slip/delete/{id}', [SalarySlipController::class, 'destroy']);
