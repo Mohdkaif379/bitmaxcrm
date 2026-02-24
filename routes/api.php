@@ -21,7 +21,7 @@ Route::post('admin/login', [AdminController::class, 'login']);
 Route::post('admin/logout', [AdminController::class, 'logout']);
 Route::get('admins', [AdminController::class, 'index']);
 Route::post('admin/create', [AdminController::class, 'store']);
-// Route::get('admins/{id}', [AdminController::class, 'show']);
+Route::get('admin/profile', [AdminController::class, 'show']);
 Route::put('admin/profile', [AdminController::class, 'update']);
 Route::delete('admin/profile', [AdminController::class, 'destroy']);
 Route::put('admin/password/update', [AdminCredentialController::class, 'updatePassword']);

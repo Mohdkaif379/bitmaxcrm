@@ -149,21 +149,36 @@ class AdminController extends Controller
         ], 201);
     }
 
-    public function show($id)
+    public function show(Request $request)
     {
-        $admin = Admin::find($id);
-
-        if (!$admin) {
+        $authenticatedAdmin = $this->authenticatedAdminFromToken($request);
+        if (!$authenticatedAdmin) {
             return response()->json([
                 'status' => false,
-                'message' => 'Admin not found.',
-            ], 404);
+                'message' => 'Unauthorized. Valid admin token is required.',
+            ], 401);
         }
+
+        $lastLoginHistory = LoginHistory::query()
+            ->where('admin_id', $authenticatedAdmin->id)
+            ->latest('id')
+            ->first();
 
         return response()->json([
             'status' => true,
             'message' => 'Admin fetched successfully.',
-            'data' => $this->transformAdmin($admin),
+            'data' => [
+                'admin' => $this->transformAdmin($authenticatedAdmin),
+                'last_login_history' => $lastLoginHistory ? [
+                    'id' => $lastLoginHistory->id,
+                    'login_time' => $lastLoginHistory->login_time,
+                    'logout_time' => $lastLoginHistory->logout_time,
+                    'ip_address' => $lastLoginHistory->ip_address,
+                    'profile_updated' => $lastLoginHistory->profile_updated,
+                    'created_at' => $lastLoginHistory->created_at,
+                    'updated_at' => $lastLoginHistory->updated_at,
+                ] : null,
+            ],
         ]);
     }
 
