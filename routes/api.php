@@ -79,3 +79,4 @@ Route::post('stock/create', [StockManagementController::class, 'store']);
 Route::get('stock/{id}', [StockManagementController::class, 'show']);
 Route::put('stock/update/{id}', [StockManagementController::class, 'update']);
 Route::delete('stock/delete/{id}', [StockManagementController::class, 'destroy']);
+
