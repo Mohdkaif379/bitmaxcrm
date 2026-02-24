@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\AssignStock\AssignStockController;
 use App\Http\Controllers\ChangeAdminCredential\AdminCredentialController;
 use App\Http\Controllers\Attendence\AttendenceController;
 use App\Http\Controllers\Employee\EmployeeController;
@@ -80,3 +81,8 @@ Route::get('stock/{id}', [StockManagementController::class, 'show']);
 Route::put('stock/update/{id}', [StockManagementController::class, 'update']);
 Route::delete('stock/delete/{id}', [StockManagementController::class, 'destroy']);
 
+Route::get('assign-stocks', [AssignStockController::class, 'index']);
+Route::post('assign-stock/create', [AssignStockController::class, 'store']);
+Route::get('assign-stock/{id}', [AssignStockController::class, 'show']);
+Route::put('assign-stock/update/{id}', [AssignStockController::class, 'update']);
+Route::delete('assign-stock/delete/{id}', [AssignStockController::class, 'destroy']);

@@ -6,5 +6,5 @@ use Illuminate\Database\Eloquent\Model;
 
 class StockManagement extends Model
 {
-    protected $table = 'stock_managements';
+    protected $table = 'stock_management';
 }
