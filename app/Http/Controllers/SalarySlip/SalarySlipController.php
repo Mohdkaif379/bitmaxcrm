@@ -275,6 +275,7 @@ class SalarySlipController extends Controller
                     'id' => $employee->id,
                     'emp_name' => $employee->emp_name,
                     'emp_email' => $employee->emp_email,
+                    'department' => $employee->department,
                 ] : null,
                 'generated_admin' => $generatedBy ? [
                     'id' => $generatedBy->id,
