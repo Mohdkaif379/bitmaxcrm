@@ -14,6 +14,7 @@ use App\Http\Controllers\SalarySlip\SalarySlipController;
 use App\Http\Controllers\StockManagement\StockManagementController;
 use App\Http\Controllers\SubAdmin\SubAdminController;
 use App\Http\Controllers\Task\TaskController;
+use App\Http\Controllers\TaskAssign\TaskAssignController;
 use App\Http\Controllers\TourConveyance\TourConevyanceFormController;
 use App\Http\Controllers\VisitorInvited\VisiterInviteController;
 use Illuminate\Http\Request;
@@ -83,6 +84,12 @@ Route::post('task/create', [TaskController::class, 'store']);
 Route::get('task/{id}', [TaskController::class, 'show']);
 Route::put('task/update/{id}', [TaskController::class, 'update']);
 Route::delete('task/delete/{id}', [TaskController::class, 'destroy']);
+
+Route::get('task-assignments', [TaskAssignController::class, 'index']);
+Route::post('task-assignment/create', [TaskAssignController::class, 'store']);
+Route::get('task-assignment/{id}', [TaskAssignController::class, 'show']);
+Route::put('task-assignment/update/{id}', [TaskAssignController::class, 'update']);
+Route::delete('task-assignment/delete/{id}', [TaskAssignController::class, 'destroy']);
 
 Route::get('stocks', [StockManagementController::class, 'index']);
 Route::post('stock/create', [StockManagementController::class, 'store']);
