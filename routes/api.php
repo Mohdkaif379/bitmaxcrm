@@ -6,6 +6,9 @@ use App\Http\Controllers\AssignStock\AssignStockController;
 use App\Http\Controllers\ChangeAdminCredential\AdminCredentialController;
 use App\Http\Controllers\Attendence\AttendenceController;
 use App\Http\Controllers\Employee\EmployeeController;
+use App\Http\Controllers\Employee\Employee\EmployeeLoginController;
+use App\Http\Controllers\Employee\Employee\MyProfileController;
+use App\Http\Controllers\Employee\Employee\MyTaskController;
 use App\Http\Controllers\Expense\ExpenseController;
 use App\Http\Controllers\Leads\LeadController;
 use App\Http\Controllers\LeadInteraction\LeadInteractionController;
@@ -120,3 +123,11 @@ Route::post('tour-conveyance-form/create', [TourConevyanceFormController::class,
 Route::get('tour-conveyance-form/{id}', [TourConevyanceFormController::class, 'show']);
 Route::put('tour-conveyance-form/update/{id}', [TourConevyanceFormController::class, 'update']);
 Route::delete('tour-conveyance-form/delete/{id}', [TourConevyanceFormController::class, 'destroy']);
+
+Route::post('employee/login', [EmployeeLoginController::class, 'login']);
+Route::post('employee/logout', [EmployeeLoginController::class, 'logout']);
+Route::get('employee/my-profile', [MyProfileController::class, 'show']);
+Route::post('employee/my-profile/update', [MyProfileController::class, 'updateMyProfile']);
+Route::put('employee/my-profile/update', [MyProfileController::class, 'updateMyProfile']);
+Route::get('employee/my-tasks', [MyTaskController::class, 'index']);
+Route::put('employee/my-task/status/{taskId}', [MyTaskController::class, 'updateStatus']);
