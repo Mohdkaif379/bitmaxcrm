@@ -14,6 +14,7 @@ use App\Http\Controllers\SalarySlip\SalarySlipController;
 use App\Http\Controllers\StockManagement\StockManagementController;
 use App\Http\Controllers\SubAdmin\SubAdminController;
 use App\Http\Controllers\Task\TaskController;
+use App\Http\Controllers\TourConveyance\TourConevyanceFormController;
 use App\Http\Controllers\VisitorInvited\VisiterInviteController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -106,3 +107,9 @@ Route::post('salary-slip/create', [SalarySlipController::class, 'store']);
 Route::get('salary-slip/{id}', [SalarySlipController::class, 'show']);
 Route::put('salary-slip/update/{id}', [SalarySlipController::class, 'update']);
 Route::delete('salary-slip/delete/{id}', [SalarySlipController::class, 'destroy']);
+
+Route::get('tour-conveyance-forms', [TourConevyanceFormController::class, 'index']);
+Route::post('tour-conveyance-form/create', [TourConevyanceFormController::class, 'store']);
+Route::get('tour-conveyance-form/{id}', [TourConevyanceFormController::class, 'show']);
+Route::put('tour-conveyance-form/update/{id}', [TourConevyanceFormController::class, 'update']);
+Route::delete('tour-conveyance-form/delete/{id}', [TourConevyanceFormController::class, 'destroy']);

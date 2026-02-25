@@ -1,0 +1,163 @@
+{
+  "info": {
+    "_postman_id": "b6d9e4be-8d75-4b24-95e0-4f6a6e2f9d9e",
+    "name": "BITMAXCRM Tour Conveyance API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Get Tour Conveyance Forms",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/tour-conveyance-forms?search=",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "tour-conveyance-forms"
+          ],
+          "query": [
+            {
+              "key": "search",
+              "value": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create Tour Conveyance Form",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"company_name\": \"Bitmax Technologies\",\n  \"company_address\": \"Noida, UP\",\n  \"company_logo_path\": \"logos/bitmax.png\",\n  \"form_heading\": \"Tour Conveyance Form\",\n  \"form_subheading\": \"Expense Reimbursement\",\n  \"form_date\": \"2026-02-25\",\n  \"employee_name\": \"Rahul Sharma\",\n  \"employee_id\": \"EMP-1001\",\n  \"designation\": \"Sales Executive\",\n  \"department\": \"Sales\",\n  \"reporting_manager\": \"Amit Verma\",\n  \"cost_center\": \"CC-100\",\n  \"purpose\": \"Client meeting and site visit\",\n  \"tour_location\": \"Delhi NCR\",\n  \"project_code\": \"PRJ-DEL-001\",\n  \"tour_from\": \"2026-02-20\",\n  \"tour_to\": \"2026-02-22\",\n  \"advance_taken\": 1000,\n  \"total_expense\": 0,\n  \"balance_payable\": 0,\n  \"balance_receivable\": 0,\n  \"manager_remarks\": \"Submit all bills\",\n  \"status\": \"Pending\",\n  \"footer_heading\": \"Accounts Department\",\n  \"footer_subheading\": \"Authorized Signatory\",\n  \"conveyance_details\": [\n    {\n      \"travel_date\": \"2026-02-20\",\n      \"mode\": \"Train\",\n      \"from_location\": \"Noida\",\n      \"to_location\": \"New Delhi\",\n      \"distance\": 25,\n      \"amount\": 450\n    },\n    {\n      \"travel_date\": \"2026-02-21\",\n      \"mode\": \"Taxi\",\n      \"from_location\": \"New Delhi\",\n      \"to_location\": \"Gurugram\",\n      \"distance\": 30,\n      \"amount\": 700\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/tour-conveyance-form/create",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "tour-conveyance-form",
+            "create"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Single Tour Conveyance Form",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/tour-conveyance-form/{{form_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "tour-conveyance-form",
+            "{{form_id}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update Tour Conveyance Form",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"Approved\",\n  \"manager_remarks\": \"Approved with complete bills\",\n  \"conveyance_details\": [\n    {\n      \"travel_date\": \"2026-02-20\",\n      \"mode\": \"Train\",\n      \"from_location\": \"Noida\",\n      \"to_location\": \"New Delhi\",\n      \"distance\": 25,\n      \"amount\": 450\n    },\n    {\n      \"travel_date\": \"2026-02-21\",\n      \"mode\": \"Taxi\",\n      \"from_location\": \"New Delhi\",\n      \"to_location\": \"Gurugram\",\n      \"distance\": 30,\n      \"amount\": 720\n    },\n    {\n      \"travel_date\": \"2026-02-22\",\n      \"mode\": \"Metro\",\n      \"from_location\": \"Gurugram\",\n      \"to_location\": \"Noida\",\n      \"distance\": 28,\n      \"amount\": 120\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/tour-conveyance-form/update/{{form_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "tour-conveyance-form",
+            "update",
+            "{{form_id}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Delete Tour Conveyance Form",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/tour-conveyance-form/delete/{{form_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "tour-conveyance-form",
+            "delete",
+            "{{form_id}}"
+          ]
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8000/api"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "form_id",
+      "value": "1"
+    }
+  ]
+}
