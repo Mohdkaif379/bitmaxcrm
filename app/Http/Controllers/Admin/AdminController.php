@@ -113,6 +113,8 @@ class AdminController extends Controller
             'number' => ['nullable', 'string', 'max:20'],
             'profile_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'role' => ['nullable', 'string', 'max:255'],
+            'permissions' => ['nullable', 'array'],
+            'permissions.*' => ['string', 'max:255'],
             'status' => ['nullable', 'boolean'],
             'bio' => ['nullable', 'string'],
             'company_logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
@@ -136,6 +138,7 @@ class AdminController extends Controller
         $admin->number = $validated['number'] ?? null;
         $admin->profile_photo = $profilePhotoPath;
         $admin->role = $validated['role'] ?? 'admin';
+        $admin->permissions = $this->resolvePermissionsForRole($admin->role, $validated['permissions'] ?? null);
         $admin->status = $validated['status'] ?? true;
         $admin->bio = $validated['bio'] ?? null;
         $admin->company_logo = $companyLogoPath;
@@ -205,6 +208,8 @@ class AdminController extends Controller
             'number' => ['nullable', 'string', 'max:20'],
             'profile_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'role' => ['nullable', 'string', 'max:255'],
+            'permissions' => ['nullable', 'array'],
+            'permissions.*' => ['string', 'max:255'],
             'status' => ['nullable', 'boolean'],
             'bio' => ['nullable', 'string'],
             'company_logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
@@ -237,6 +242,9 @@ class AdminController extends Controller
 
         if (array_key_exists('role', $validated)) {
             $admin->role = $validated['role'];
+            $admin->permissions = $this->resolvePermissionsForRole($admin->role, $validated['permissions'] ?? $admin->permissions);
+        } elseif (array_key_exists('permissions', $validated)) {
+            $admin->permissions = $this->resolvePermissionsForRole($admin->role, $validated['permissions']);
         }
 
         if (array_key_exists('status', $validated)) {
@@ -303,6 +311,15 @@ class AdminController extends Controller
         $data['company_logo'] = $admin->company_logo ? url(Storage::url($admin->company_logo)) : null;
 
         return $data;
+    }
+
+    private function resolvePermissionsForRole(?string $role, ?array $permissions): array
+    {
+        if (strtolower((string) $role) === 'admin') {
+            return ['*'];
+        }
+
+        return array_values(array_unique($permissions ?? []));
     }
 
     private function createJwtToken(Admin $admin, int $loginHistoryId): string
