@@ -128,6 +128,6 @@ Route::post('employee/login', [EmployeeLoginController::class, 'login']);
 Route::post('employee/logout', [EmployeeLoginController::class, 'logout']);
 Route::get('employee/my-profile', [MyProfileController::class, 'show']);
 Route::post('employee/my-profile/update', [MyProfileController::class, 'updateMyProfile']);
-Route::put('employee/my-profile/update', [MyProfileController::class, 'updateMyProfile']);
+//Route::put('employee/my-profile/update', [MyProfileController::class, 'updateMyProfile']);
 Route::get('employee/my-tasks', [MyTaskController::class, 'index']);
 Route::put('employee/my-task/status/{taskId}', [MyTaskController::class, 'updateStatus']);
