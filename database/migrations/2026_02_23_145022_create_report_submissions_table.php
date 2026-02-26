@@ -14,8 +14,9 @@ return new class extends Migration
         Schema::create('report_submissions', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('employee_id');
-            $table->boolean('report_status')->default(0);
+            $table->enum('report_status', ['yes', 'no'])->default('no');
             $table->foreign('employee_id')->references('id')->on('employees')->onDelete('cascade');
+            $table->index('employee_id');
             $table->timestamps();
         });
     }

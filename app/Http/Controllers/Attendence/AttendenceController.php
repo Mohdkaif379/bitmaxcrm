@@ -78,19 +78,10 @@ class AttendenceController extends Controller
 
     public function markIn(Request $request)
     {
-        $isAdmin = $this->isAdminToken($request);
-
         $validated = $request->validate([
             'employee_id' => ['required', 'integer', 'exists:employees,id'],
-            'profile_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'profile_image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ]);
-
-        if (!$isAdmin && !$request->hasFile('profile_image')) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Profile image is required for mark in.',
-            ], 422);
-        }
 
         $now = now('Asia/Kolkata');
         $today = $now->toDateString();
@@ -125,19 +116,10 @@ class AttendenceController extends Controller
 
     public function markOut(Request $request)
     {
-        $isAdmin = $this->isAdminToken($request);
-
         $validated = $request->validate([
             'employee_id' => ['required', 'integer', 'exists:employees,id'],
-            'profile_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'profile_image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ]);
-
-        if (!$isAdmin && !$request->hasFile('profile_image')) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Profile image is required for mark out.',
-            ], 422);
-        }
 
         $today = now('Asia/Kolkata')->toDateString();
         $attendance = Attendence::where('employee_id', (int) $validated['employee_id'])
@@ -179,19 +161,10 @@ class AttendenceController extends Controller
 
     public function breakStart(Request $request)
     {
-        $isAdmin = $this->isAdminToken($request);
-
         $validated = $request->validate([
             'employee_id' => ['required', 'integer', 'exists:employees,id'],
-            'profile_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'profile_image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ]);
-
-        if (!$isAdmin && !$request->hasFile('profile_image')) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Profile image is required for break start.',
-            ], 422);
-        }
 
         $today = now('Asia/Kolkata')->toDateString();
         $attendance = Attendence::where('employee_id', (int) $validated['employee_id'])
@@ -236,19 +209,10 @@ class AttendenceController extends Controller
 
     public function breakEnd(Request $request)
     {
-        $isAdmin = $this->isAdminToken($request);
-
         $validated = $request->validate([
             'employee_id' => ['required', 'integer', 'exists:employees,id'],
-            'profile_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'profile_image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ]);
-
-        if (!$isAdmin && !$request->hasFile('profile_image')) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Profile image is required for break end.',
-            ], 422);
-        }
 
         $today = now('Asia/Kolkata')->toDateString();
         $attendance = Attendence::where('employee_id', (int) $validated['employee_id'])

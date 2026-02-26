@@ -22,6 +22,8 @@ return new class extends Migration
             $table->string('profile_image')->nullable();
             $table->enum('status', ['present', 'absent', 'halfday', 'holiday'])->default('present');
             $table->foreign('employee_id')->references('id')->on('employees')->onDelete('cascade');
+            $table->unique(['employee_id', 'date']);
+            $table->index('date');
             $table->timestamps();
         });
     }
