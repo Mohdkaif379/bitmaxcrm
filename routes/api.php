@@ -9,6 +9,7 @@ use App\Http\Controllers\Employee\EmployeeController;
 use App\Http\Controllers\Employee\Employee\EmployeeLoginController;
 use App\Http\Controllers\Employee\Employee\EmployeeAttendenceController;
 use App\Http\Controllers\Employee\Employee\EmployeeActivityController;
+use App\Http\Controllers\Employee\Employee\EmployeeDashboardController;
 use App\Http\Controllers\Employee\Employee\EmployeeLeaveManageController;
 use App\Http\Controllers\Employee\Employee\MyProfileController;
 use App\Http\Controllers\Employee\Employee\MyTaskController;
@@ -138,6 +139,7 @@ Route::post('employee/attendence/mark-out', [EmployeeAttendenceController::class
 Route::post('employee/attendence/break-start', [EmployeeAttendenceController::class, 'breakStart']);
 Route::post('employee/attendence/break-end', [EmployeeAttendenceController::class, 'breakEnd']);
 Route::get('employee/my-activities', [EmployeeActivityController::class, 'myActivities']);
+Route::get('employee/dashboard', [EmployeeDashboardController::class, 'dashboard']);
 Route::post('employee/leave/store', [EmployeeLeaveManageController::class, 'store']);
 Route::get('employee/my-leaves', [EmployeeLeaveManageController::class, 'myLeaves']);
 Route::get('leaves', [LeaveManageController::class, 'index']);
