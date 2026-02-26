@@ -15,6 +15,7 @@ class Attendence extends Model
         'break_start',
         'break_end',
         'profile_image',
+        'ip_address',
         'status',
     ];
 

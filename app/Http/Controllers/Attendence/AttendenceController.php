@@ -100,6 +100,7 @@ class AttendenceController extends Controller
 
         $attendance->mark_in = $now->format('H:i:s');
         $attendance->status = $attendance->mark_in <= '09:31:00' ? 'present' : 'halfday';
+        $attendance->ip_address = $request->ip();
 
         if ($request->hasFile('profile_image')) {
             $attendance->profile_image = $request->file('profile_image')->store('attendence/mark_in', 'public');
@@ -145,6 +146,7 @@ class AttendenceController extends Controller
         $markInOnTime = $attendance->mark_in <= '09:31:00';
         $markOutOnTime = $attendance->mark_out >= '18:30:00';
         $attendance->status = ($markInOnTime && $markOutOnTime) ? 'present' : 'halfday';
+        $attendance->ip_address = $request->ip();
 
         if ($request->hasFile('profile_image')) {
             $attendance->profile_image = $request->file('profile_image')->store('attendence/mark_out', 'public');
@@ -193,6 +195,7 @@ class AttendenceController extends Controller
         }
 
         $attendance->break_start = now('Asia/Kolkata')->format('H:i:s');
+        $attendance->ip_address = $request->ip();
 
         if ($request->hasFile('profile_image')) {
             $attendance->profile_image = $request->file('profile_image')->store('attendence/break_start', 'public');
@@ -241,6 +244,7 @@ class AttendenceController extends Controller
         }
 
         $attendance->break_end = now('Asia/Kolkata')->format('H:i:s');
+        $attendance->ip_address = $request->ip();
 
         if ($request->hasFile('profile_image')) {
             $attendance->profile_image = $request->file('profile_image')->store('attendence/break_end', 'public');
@@ -315,6 +319,7 @@ class AttendenceController extends Controller
         } else {
             $attendance->status = $this->resolveAttendanceStatus($attendance->mark_in, $attendance->mark_out, $attendance->status);
         }
+        $attendance->ip_address = $request->ip();
 
         $attendance->save();
         $attendance->load('employee');
