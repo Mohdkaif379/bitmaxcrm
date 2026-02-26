@@ -7,6 +7,7 @@ use App\Models\Admin;
 use App\Models\Attendence;
 use App\Models\Employee;
 use App\Models\EmployeePayroll;
+use App\Models\LeaveManagement;
 use App\Models\SalarySlip;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -300,8 +301,18 @@ class SalarySlipController extends Controller
             'holiday' => 0,
             'absent' => 0,
         ];
+        $leaveSummary = [
+            'pending' => 0,
+            'approved' => 0,
+            'rejected' => 0,
+            'total_requested_days' => 0,
+            'approved_days' => 0,
+        ];
+        $leaveRecords = collect();
         $totalDaysInMonth = 0;
         $payableDays = 0.0;
+        $monthStart = null;
+        $monthEnd = null;
 
         if ($monthNumber !== null) {
             $attendanceRecords = Attendence::query()
@@ -319,9 +330,38 @@ class SalarySlipController extends Controller
             }
 
             $totalDaysInMonth = Carbon::create((int) $salarySlip->year, $monthNumber, 1)->daysInMonth;
+            $monthStart = Carbon::create((int) $salarySlip->year, $monthNumber, 1)->startOfDay();
+            $monthEnd = Carbon::create((int) $salarySlip->year, $monthNumber, 1)->endOfMonth()->endOfDay();
             $payableDays = (float) $attendanceSummary['present']
                 + (float) $attendanceSummary['holiday']
                 + ((float) $attendanceSummary['halfday'] * 0.5);
+
+            $leaveRecords = LeaveManagement::query()
+                ->where('employee_id', $salarySlip->employee_id)
+                ->whereDate('start_date', '<=', $monthEnd->toDateString())
+                ->whereDate('end_date', '>=', $monthStart->toDateString())
+                ->orderBy('start_date')
+                ->get();
+
+            foreach ($leaveRecords as $leave) {
+                $status = (string) $leave->status;
+                $daysInSelectedMonth = $this->overlapDaysInMonth(
+                    (string) $leave->start_date,
+                    (string) $leave->end_date,
+                    $monthStart,
+                    $monthEnd
+                );
+
+                $leaveSummary['total_requested_days'] += $daysInSelectedMonth;
+
+                if (array_key_exists($status, $leaveSummary)) {
+                    $leaveSummary[$status]++;
+                }
+
+                if ($status === 'approved') {
+                    $leaveSummary['approved_days'] += $daysInSelectedMonth;
+                }
+            }
         }
 
         $basicSalary = (float) ($payroll?->basic_salary ?? 0);
@@ -334,11 +374,12 @@ class SalarySlipController extends Controller
         $grossPayableSalary = $totalAttendanceEntries > 0
             ? round($perDaySalary * $payableDays, 2)
             : round($grossSalary, 2);
+        $leaveDeduction = round($perDaySalary * (float) $leaveSummary['approved_days'], 2);
         $totalDeductions = round(
             (float) collect($salarySlip->deductions ?? [])->sum(fn ($item) => (float) ($item['amount'] ?? 0)),
             2
         );
-        $netSalary = round($grossPayableSalary - $totalDeductions, 2);
+        $netSalary = round($grossPayableSalary - $leaveDeduction - $totalDeductions, 2);
         $finalSalaryPayable = round(max($netSalary, 0), 2);
 
         $base['employee_code'] = $employee?->emp_code;
@@ -358,6 +399,21 @@ class SalarySlipController extends Controller
             ];
         })->values()->all();
         $base['attendance_summary'] = $attendanceSummary;
+        $base['leave_records'] = $leaveRecords->map(function (LeaveManagement $leave) use ($monthStart, $monthEnd) {
+            return [
+                'id' => $leave->id,
+                'start_date' => $leave->start_date,
+                'end_date' => $leave->end_date,
+                'subject' => $leave->subject,
+                'leave_type' => $leave->leave_type,
+                'status' => $leave->status,
+                'total_days' => $leave->total_days,
+                'days_in_selected_month' => ($monthStart && $monthEnd)
+                    ? $this->overlapDaysInMonth((string) $leave->start_date, (string) $leave->end_date, $monthStart, $monthEnd)
+                    : 0,
+            ];
+        })->values()->all();
+        $base['leave_summary'] = $leaveSummary;
         $base['employee_payroll'] = [
             'basic_salary' => $payroll?->basic_salary,
             'hra' => $payroll?->hra,
@@ -370,6 +426,8 @@ class SalarySlipController extends Controller
             'per_day_salary' => round($perDaySalary, 2),
             'gross_salary' => round($grossSalary, 2),
             'gross_payable_salary' => $grossPayableSalary,
+            'approved_leave_days' => (float) $leaveSummary['approved_days'],
+            'leave_deduction' => $leaveDeduction,
             'total_deductions' => $totalDeductions,
             'net_salary' => $netSalary,
             'final_salary_payable' => $finalSalaryPayable,
@@ -528,5 +586,20 @@ class SalarySlipController extends Controller
         }
 
         return $candidate;
+    }
+
+    private function overlapDaysInMonth(string $leaveStartDate, string $leaveEndDate, Carbon $monthStart, Carbon $monthEnd): int
+    {
+        $leaveStart = Carbon::parse($leaveStartDate)->startOfDay();
+        $leaveEnd = Carbon::parse($leaveEndDate)->endOfDay();
+
+        $start = $leaveStart->greaterThan($monthStart) ? $leaveStart : $monthStart;
+        $end = $leaveEnd->lessThan($monthEnd) ? $leaveEnd : $monthEnd;
+
+        if ($start->greaterThan($end)) {
+            return 0;
+        }
+
+        return $start->diffInDays($end) + 1;
     }
 }

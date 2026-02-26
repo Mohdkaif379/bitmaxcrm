@@ -14,6 +14,7 @@ use App\Http\Controllers\Employee\Employee\MyTaskController;
 use App\Http\Controllers\Expense\ExpenseController;
 use App\Http\Controllers\Leads\LeadController;
 use App\Http\Controllers\LeadInteraction\LeadInteractionController;
+use App\Http\Controllers\Leave\LeaveManageController;
 use App\Http\Controllers\Proposal\ProposalController;
 use App\Http\Controllers\SalarySlip\SalarySlipController;
 use App\Http\Controllers\StockManagement\StockManagementController;
@@ -137,5 +138,9 @@ Route::post('employee/attendence/break-start', [EmployeeAttendenceController::cl
 Route::post('employee/attendence/break-end', [EmployeeAttendenceController::class, 'breakEnd']);
 Route::post('employee/leave/store', [EmployeeLeaveManageController::class, 'store']);
 Route::get('employee/my-leaves', [EmployeeLeaveManageController::class, 'myLeaves']);
+Route::get('leaves', [LeaveManageController::class, 'index']);
+Route::put('leave/approve/{id}', [LeaveManageController::class, 'approve']);
+Route::post('leave/update/{id}', [LeaveManageController::class, 'update']);
+Route::delete('leave/delete/{id}', [LeaveManageController::class, 'destroy']);
 Route::get('employee/my-tasks', [MyTaskController::class, 'index']);
 Route::put('employee/my-task/status/{taskId}', [MyTaskController::class, 'updateStatus']);
