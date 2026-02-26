@@ -94,6 +94,7 @@ class LeaveManageController extends Controller
         }
 
         $validated = $request->validate([
+            'employee_id' => ['sometimes', 'required', 'integer', 'exists:employees,id'],
             'start_date' => ['sometimes', 'required', 'date'],
             'end_date' => ['sometimes', 'required', 'date', 'after_or_equal:start_date'],
             'subject' => ['sometimes', 'required', 'string', 'max:255'],
@@ -103,6 +104,9 @@ class LeaveManageController extends Controller
             'file' => ['sometimes', 'nullable', 'file', 'mimes:jpg,jpeg,png,pdf,doc,docx,webp', 'max:5120'],
         ]);
 
+        if (array_key_exists('employee_id', $validated)) {
+            $leave->employee_id = (int) $validated['employee_id'];
+        }
         if (array_key_exists('start_date', $validated)) {
             $leave->start_date = $validated['start_date'];
         }
