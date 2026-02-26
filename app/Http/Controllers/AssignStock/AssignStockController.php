@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\AssignStock;
 use App\Models\Employee;
+use App\Models\Log;
 use App\Models\StockManagement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -139,6 +140,8 @@ class AssignStockController extends Controller
             ], 404);
         }
 
+        $this->logAssignStockAction($request, $admin, $assignment, 'create', 'assigned stock to');
+
         return response()->json([
             'status' => true,
             'message' => 'Stock assigned successfully.',
@@ -271,6 +274,8 @@ class AssignStockController extends Controller
             ], 404);
         }
 
+        $this->logAssignStockAction($request, $admin, $updated, 'update', 'updated assigned stock for');
+
         return response()->json([
             'status' => true,
             'message' => 'Assigned stock updated successfully.',
@@ -296,6 +301,9 @@ class AssignStockController extends Controller
             ], 404);
         }
 
+        $employeeId = $assignment->employee_id;
+        $employeeName = $this->resolveEmployeeName($employeeId);
+
         DB::transaction(function () use ($assignment) {
             $stock = StockManagement::where('id', (int) $assignment->stock_management_id)->lockForUpdate()->first();
 
@@ -307,6 +315,8 @@ class AssignStockController extends Controller
 
             $assignment->delete();
         });
+
+        $this->logAssignStockDeleteAction($request, $admin, $employeeId, $employeeName);
 
         return response()->json([
             'status' => true,
@@ -437,5 +447,64 @@ class AssignStockController extends Controller
         }
 
         return base64_decode(strtr($value, '-_', '+/'), true);
+    }
+
+    private function logAssignStockAction(
+        Request $request,
+        Admin $admin,
+        AssignStock $assignment,
+        string $action,
+        string $actionText
+    ): void {
+        $adminName = $admin->full_name ?: 'unknown admin';
+        $employeeName = $this->resolveEmployeeName($assignment->employee_id);
+
+        $log = new Log();
+        $log->admin_id = $admin->id;
+        $log->employee_id = $assignment->employee_id;
+        $log->model = class_basename($assignment);
+        $log->action = $action;
+        $log->description = sprintf(
+            'admin(%s) %s employee(%s)',
+            $adminName,
+            $actionText,
+            $employeeName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
+    }
+
+    private function logAssignStockDeleteAction(
+        Request $request,
+        Admin $admin,
+        ?int $employeeId,
+        string $employeeName
+    ): void {
+        $adminName = $admin->full_name ?: 'unknown admin';
+
+        $log = new Log();
+        $log->admin_id = $admin->id;
+        $log->employee_id = $employeeId;
+        $log->model = class_basename(AssignStock::class);
+        $log->action = 'delete';
+        $log->description = sprintf(
+            'admin(%s) deleted assigned stock for employee(%s)',
+            $adminName,
+            $employeeName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
+    }
+
+    private function resolveEmployeeName(?int $employeeId): string
+    {
+        if (!$employeeId) {
+            return 'unknown employee';
+        }
+
+        $employee = Employee::find($employeeId);
+        return $employee?->emp_name ?: 'unknown employee';
     }
 }

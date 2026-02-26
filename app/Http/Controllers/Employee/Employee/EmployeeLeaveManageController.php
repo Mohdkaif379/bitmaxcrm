@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Employee\Employee;
 use App\Http\Controllers\Controller;
 use App\Models\Employee;
 use App\Models\LeaveManagement;
+use App\Models\Log;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -50,6 +51,7 @@ class EmployeeLeaveManageController extends Controller
 
         $leave->save();
         $leave->load('employee');
+        $this->logEmployeeLeaveAction($request, $employee, 'create', 'submitted leave request');
 
         return response()->json([
             'status' => true,
@@ -72,6 +74,7 @@ class EmployeeLeaveManageController extends Controller
             ->where('employee_id', $employee->id)
             ->latest('id')
             ->get();
+        $this->logEmployeeLeaveAction($request, $employee, 'view', 'viewed leave requests');
 
         return response()->json([
             'status' => true,
@@ -185,5 +188,24 @@ class EmployeeLeaveManageController extends Controller
         }
 
         return base64_decode(strtr($value, '-_', '+/'), true);
+    }
+
+    private function logEmployeeLeaveAction(Request $request, Employee $employee, string $action, string $actionText): void
+    {
+        $employeeName = $employee->emp_name ?: 'unknown employee';
+
+        $log = new Log();
+        $log->admin_id = null;
+        $log->employee_id = $employee->id;
+        $log->model = class_basename(LeaveManagement::class);
+        $log->action = $action;
+        $log->description = sprintf(
+            'employee(%s) %s',
+            $employeeName,
+            $actionText
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
     }
 }

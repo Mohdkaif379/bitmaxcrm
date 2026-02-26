@@ -4,6 +4,7 @@ namespace App\Http\Controllers\ChangeAdminCredential;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
+use App\Models\Log;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
@@ -42,6 +43,7 @@ class AdminCredentialController extends Controller
 
         $admin->password = Hash::make($validated['new_password']);
         $admin->save();
+        $this->logCredentialAction($request, $admin, 'update_password', 'updated own password');
 
         return response()->json([
             'status' => true,
@@ -135,5 +137,24 @@ class AdminCredentialController extends Controller
         }
 
         return base64_decode(strtr($value, '-_', '+/'), true);
+    }
+
+    private function logCredentialAction(Request $request, Admin $admin, string $action, string $actionText): void
+    {
+        $adminName = $admin->full_name ?: 'unknown admin';
+
+        $log = new Log();
+        $log->admin_id = $admin->id;
+        $log->employee_id = null;
+        $log->model = class_basename($admin);
+        $log->action = $action;
+        $log->description = sprintf(
+            'admin(%s) %s',
+            $adminName,
+            $actionText
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
     }
 }

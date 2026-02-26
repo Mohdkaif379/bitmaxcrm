@@ -7,6 +7,7 @@ use App\Models\Activity;
 use App\Models\BestEmployee;
 use App\Models\Employee;
 use App\Models\EvaluationCriteria;
+use App\Models\Log;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
@@ -47,6 +48,7 @@ class EmployeeActivityController extends Controller
         }
 
         $activities = $query->latest()->paginate(10);
+        $this->logEmployeeActivityView($request, $employee);
 
         return response()->json([
             'status' => true,
@@ -223,5 +225,23 @@ class EmployeeActivityController extends Controller
         }
 
         return base64_decode(strtr($value, '-_', '+/'), true);
+    }
+
+    private function logEmployeeActivityView(Request $request, Employee $employee): void
+    {
+        $employeeName = $employee->emp_name ?: 'unknown employee';
+
+        $log = new Log();
+        $log->admin_id = null;
+        $log->employee_id = $employee->id;
+        $log->model = class_basename(Activity::class);
+        $log->action = 'view';
+        $log->description = sprintf(
+            'employee(%s) viewed assigned activities',
+            $employeeName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
     }
 }

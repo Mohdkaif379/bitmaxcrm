@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Employee\Employee;
 
 use App\Http\Controllers\Controller;
 use App\Models\Employee;
+use App\Models\Log;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
@@ -29,6 +30,7 @@ class EmployeeLoginController extends Controller
         }
 
         $token = $this->createJwtToken($employee);
+        $this->logEmployeeAuthAction($request, $employee, 'login', 'logged in');
 
         return response()->json([
             'status' => true,
@@ -62,6 +64,10 @@ class EmployeeLoginController extends Controller
 
         $blacklistKey = 'employee_jwt_blacklist:' . hash('sha256', $token);
         Cache::forever($blacklistKey, true);
+        $employee = $this->resolveEmployeeFromPayload($payload);
+        if ($employee) {
+            $this->logEmployeeAuthAction($request, $employee, 'logout', 'logged out');
+        }
 
         return response()->json([
             'status' => true,
@@ -175,5 +181,38 @@ class EmployeeLoginController extends Controller
         }
 
         return base64_decode(strtr($value, '-_', '+/'), true);
+    }
+
+    private function resolveEmployeeFromPayload(array $payload): ?Employee
+    {
+        if (($payload['role'] ?? null) !== 'employee') {
+            return null;
+        }
+
+        $employeeId = (int) ($payload['sub'] ?? 0);
+        if ($employeeId <= 0) {
+            return null;
+        }
+
+        return Employee::find($employeeId);
+    }
+
+    private function logEmployeeAuthAction(Request $request, Employee $employee, string $action, string $actionText): void
+    {
+        $employeeName = $employee->emp_name ?: 'unknown employee';
+
+        $log = new Log();
+        $log->admin_id = null;
+        $log->employee_id = $employee->id;
+        $log->model = class_basename(Employee::class);
+        $log->action = $action;
+        $log->description = sprintf(
+            'employee(%s) %s',
+            $employeeName,
+            $actionText
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
     }
 }

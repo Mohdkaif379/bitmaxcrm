@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Leads;
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\Lead;
+use App\Models\Log;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
@@ -91,6 +92,7 @@ class LeadController extends Controller
         $lead->source = $validated['source'];
         $lead->priority = $validated['priority'];
         $lead->save();
+        $this->logLeadAction($request, $admin, $lead, 'create', 'created lead');
 
         return response()->json([
             'status' => true,
@@ -179,6 +181,7 @@ class LeadController extends Controller
         }
 
         $lead->save();
+        $this->logLeadAction($request, $admin, $lead, 'update', 'updated lead');
 
         return response()->json([
             'status' => true,
@@ -205,7 +208,9 @@ class LeadController extends Controller
             ], 404);
         }
 
+        $leadName = $lead->name ?: 'unknown lead';
         $lead->delete();
+        $this->logLeadDeleteAction($request, $admin, $leadName);
 
         return response()->json([
             'status' => true,
@@ -299,5 +304,50 @@ class LeadController extends Controller
         }
 
         return base64_decode(strtr($value, '-_', '+/'), true);
+    }
+
+    private function logLeadAction(
+        Request $request,
+        Admin $admin,
+        Lead $lead,
+        string $action,
+        string $actionText
+    ): void {
+        $adminName = $admin->full_name ?: 'unknown admin';
+        $leadName = $lead->name ?: 'unknown lead';
+
+        $log = new Log();
+        $log->admin_id = $admin->id;
+        $log->employee_id = null;
+        $log->model = class_basename($lead);
+        $log->action = $action;
+        $log->description = sprintf(
+            'admin(%s) %s (%s)',
+            $adminName,
+            $actionText,
+            $leadName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
+    }
+
+    private function logLeadDeleteAction(Request $request, Admin $admin, string $leadName): void
+    {
+        $adminName = $admin->full_name ?: 'unknown admin';
+
+        $log = new Log();
+        $log->admin_id = $admin->id;
+        $log->employee_id = null;
+        $log->model = class_basename(Lead::class);
+        $log->action = 'delete';
+        $log->description = sprintf(
+            'admin(%s) deleted lead (%s)',
+            $adminName,
+            $leadName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
     }
 }

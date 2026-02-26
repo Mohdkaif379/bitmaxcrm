@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Attendence;
 use App\Models\Employee;
 use App\Models\LeaveManagement;
+use App\Models\Log;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
@@ -39,6 +40,7 @@ class EmployeeDashboardController extends Controller
             'rejected_leave_requests' => (clone $leaveQuery)->where('status', 'rejected')->count(),
             'total_leave_days' => (int) ((clone $leaveQuery)->sum('total_days') ?? 0),
         ];
+        $this->logEmployeeDashboardView($request, $employee);
 
         return response()->json([
             'status' => true,
@@ -146,5 +148,23 @@ class EmployeeDashboardController extends Controller
         }
 
         return base64_decode(strtr($value, '-_', '+/'), true);
+    }
+
+    private function logEmployeeDashboardView(Request $request, Employee $employee): void
+    {
+        $employeeName = $employee->emp_name ?: 'unknown employee';
+
+        $log = new Log();
+        $log->admin_id = null;
+        $log->employee_id = $employee->id;
+        $log->model = class_basename(Employee::class);
+        $log->action = 'view';
+        $log->description = sprintf(
+            'employee(%s) viewed dashboard',
+            $employeeName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
     }
 }

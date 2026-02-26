@@ -4,6 +4,7 @@ namespace App\Http\Controllers\StockManagement;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
+use App\Models\Log;
 use App\Models\StockManagement as StockManagementModel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -79,6 +80,7 @@ class StockManagementController extends Controller
         $stock->unit = $validated['unit'] ?? null;
         $stock->total_price = round(((float) $validated['quantity']) * ((float) $validated['price']), 2);
         $stock->save();
+        $this->logStockAction($request, $admin, $stock, 'create', 'created stock item');
 
         return response()->json([
             'status' => true,
@@ -156,6 +158,7 @@ class StockManagementController extends Controller
 
         $stock->total_price = round(((float) $stock->quantity) * ((float) $stock->price), 2);
         $stock->save();
+        $this->logStockAction($request, $admin, $stock, 'update', 'updated stock item');
 
         return response()->json([
             'status' => true,
@@ -182,7 +185,9 @@ class StockManagementController extends Controller
             ], 404);
         }
 
+        $itemName = $stock->item_name ?: 'unknown item';
         $stock->delete();
+        $this->logStockDeleteAction($request, $admin, $itemName);
 
         return response()->json([
             'status' => true,
@@ -276,5 +281,50 @@ class StockManagementController extends Controller
         }
 
         return base64_decode(strtr($value, '-_', '+/'), true);
+    }
+
+    private function logStockAction(
+        Request $request,
+        Admin $admin,
+        StockManagementModel $stock,
+        string $action,
+        string $actionText
+    ): void {
+        $adminName = $admin->full_name ?: 'unknown admin';
+        $itemName = $stock->item_name ?: 'unknown item';
+
+        $log = new Log();
+        $log->admin_id = $admin->id;
+        $log->employee_id = null;
+        $log->model = class_basename($stock);
+        $log->action = $action;
+        $log->description = sprintf(
+            'admin(%s) %s (%s)',
+            $adminName,
+            $actionText,
+            $itemName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
+    }
+
+    private function logStockDeleteAction(Request $request, Admin $admin, string $itemName): void
+    {
+        $adminName = $admin->full_name ?: 'unknown admin';
+
+        $log = new Log();
+        $log->admin_id = $admin->id;
+        $log->employee_id = null;
+        $log->model = class_basename(StockManagementModel::class);
+        $log->action = 'delete';
+        $log->description = sprintf(
+            'admin(%s) deleted stock item (%s)',
+            $adminName,
+            $itemName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
     }
 }

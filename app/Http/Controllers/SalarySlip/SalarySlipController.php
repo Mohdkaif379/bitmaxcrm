@@ -8,6 +8,7 @@ use App\Models\Attendence;
 use App\Models\Employee;
 use App\Models\EmployeePayroll;
 use App\Models\LeaveManagement;
+use App\Models\Log;
 use App\Models\SalarySlip;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -124,6 +125,7 @@ class SalarySlipController extends Controller
         $salarySlip->year = $validated['year'];
         $salarySlip->generated_by = $admin->id;
         $salarySlip->save();
+        $this->logSalarySlipAction($request, $admin, $salarySlip, 'create', 'created salary slip for');
 
         return response()->json([
             'status' => true,
@@ -216,6 +218,7 @@ class SalarySlipController extends Controller
 
         $salarySlip->generated_by = $admin->id;
         $salarySlip->save();
+        $this->logSalarySlipAction($request, $admin, $salarySlip, 'update', 'updated salary slip for');
 
         return response()->json([
             'status' => true,
@@ -242,7 +245,10 @@ class SalarySlipController extends Controller
             ], 404);
         }
 
+        $employeeId = $salarySlip->employee_id;
+        $employeeName = $this->resolveEmployeeName($employeeId);
         $salarySlip->delete();
+        $this->logSalarySlipDeleteAction($request, $admin, $employeeId, $employeeName);
 
         return response()->json([
             'status' => true,
@@ -601,5 +607,60 @@ class SalarySlipController extends Controller
         }
 
         return $start->diffInDays($end) + 1;
+    }
+
+    private function logSalarySlipAction(
+        Request $request,
+        Admin $admin,
+        SalarySlip $salarySlip,
+        string $action,
+        string $actionText
+    ): void {
+        $adminName = $admin->full_name ?: 'unknown admin';
+        $employeeName = $this->resolveEmployeeName($salarySlip->employee_id);
+
+        $log = new Log();
+        $log->admin_id = $admin->id;
+        $log->employee_id = $salarySlip->employee_id;
+        $log->model = class_basename($salarySlip);
+        $log->action = $action;
+        $log->description = sprintf(
+            'admin(%s) %s employee(%s)',
+            $adminName,
+            $actionText,
+            $employeeName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
+    }
+
+    private function logSalarySlipDeleteAction(Request $request, Admin $admin, ?int $employeeId, string $employeeName): void
+    {
+        $adminName = $admin->full_name ?: 'unknown admin';
+
+        $log = new Log();
+        $log->admin_id = $admin->id;
+        $log->employee_id = $employeeId;
+        $log->model = class_basename(SalarySlip::class);
+        $log->action = 'delete';
+        $log->description = sprintf(
+            'admin(%s) deleted salary slip for employee(%s)',
+            $adminName,
+            $employeeName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
+    }
+
+    private function resolveEmployeeName(?int $employeeId): string
+    {
+        if (!$employeeId) {
+            return 'unknown employee';
+        }
+
+        $employee = Employee::find($employeeId);
+        return $employee?->emp_name ?: 'unknown employee';
     }
 }

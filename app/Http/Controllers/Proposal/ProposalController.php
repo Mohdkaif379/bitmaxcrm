@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Proposal;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
+use App\Models\Lead;
+use App\Models\Log;
 use App\Models\Proposal;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -96,6 +98,7 @@ class ProposalController extends Controller
         }
 
         $proposal->save();
+        $this->logProposalAction($request, $admin, $proposal, 'create', 'created proposal for');
 
         return response()->json([
             'status' => true,
@@ -174,6 +177,7 @@ class ProposalController extends Controller
         }
 
         $proposal->save();
+        $this->logProposalAction($request, $admin, $proposal, 'update', 'updated proposal for');
 
         return response()->json([
             'status' => true,
@@ -204,7 +208,9 @@ class ProposalController extends Controller
             Storage::disk('public')->delete($proposal->file);
         }
 
+        $leadName = $this->resolveLeadName($proposal->lead_id);
         $proposal->delete();
+        $this->logProposalDeleteAction($request, $admin, $leadName);
 
         return response()->json([
             'status' => true,
@@ -315,5 +321,60 @@ class ProposalController extends Controller
         }
 
         return base64_decode(strtr($value, '-_', '+/'), true);
+    }
+
+    private function logProposalAction(
+        Request $request,
+        Admin $admin,
+        Proposal $proposal,
+        string $action,
+        string $actionText
+    ): void {
+        $adminName = $admin->full_name ?: 'unknown admin';
+        $leadName = $this->resolveLeadName($proposal->lead_id);
+
+        $log = new Log();
+        $log->admin_id = $admin->id;
+        $log->employee_id = null;
+        $log->model = class_basename($proposal);
+        $log->action = $action;
+        $log->description = sprintf(
+            'admin(%s) %s lead(%s)',
+            $adminName,
+            $actionText,
+            $leadName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
+    }
+
+    private function logProposalDeleteAction(Request $request, Admin $admin, string $leadName): void
+    {
+        $adminName = $admin->full_name ?: 'unknown admin';
+
+        $log = new Log();
+        $log->admin_id = $admin->id;
+        $log->employee_id = null;
+        $log->model = class_basename(Proposal::class);
+        $log->action = 'delete';
+        $log->description = sprintf(
+            'admin(%s) deleted proposal for lead(%s)',
+            $adminName,
+            $leadName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
+    }
+
+    private function resolveLeadName(?int $leadId): string
+    {
+        if (!$leadId) {
+            return 'unknown lead';
+        }
+
+        $lead = Lead::find($leadId);
+        return $lead?->name ?: 'unknown lead';
     }
 }

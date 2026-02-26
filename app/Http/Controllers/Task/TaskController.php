@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Task;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
+use App\Models\Log;
 use App\Models\Task;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -90,6 +91,7 @@ class TaskController extends Controller
         $task->priority = $validated['priority'] ?? 'medium';
         $task->progress = $validated['progress'] ?? 0;
         $task->save();
+        $this->logTaskAction($request, $admin, $task, 'create', 'created task');
 
         return response()->json([
             'status' => true,
@@ -183,6 +185,7 @@ class TaskController extends Controller
         }
 
         $task->save();
+        $this->logTaskAction($request, $admin, $task, 'update', 'updated task');
 
         return response()->json([
             'status' => true,
@@ -209,7 +212,9 @@ class TaskController extends Controller
             ], 404);
         }
 
+        $taskName = $task->task_name ?: 'unknown task';
         $task->delete();
+        $this->logTaskDeleteAction($request, $admin, $taskName);
 
         return response()->json([
             'status' => true,
@@ -303,5 +308,50 @@ class TaskController extends Controller
         }
 
         return base64_decode(strtr($value, '-_', '+/'), true);
+    }
+
+    private function logTaskAction(
+        Request $request,
+        Admin $admin,
+        Task $task,
+        string $action,
+        string $actionText
+    ): void {
+        $adminName = $admin->full_name ?: 'unknown admin';
+        $taskName = $task->task_name ?: 'unknown task';
+
+        $log = new Log();
+        $log->admin_id = $admin->id;
+        $log->employee_id = null;
+        $log->model = class_basename($task);
+        $log->action = $action;
+        $log->description = sprintf(
+            'admin(%s) %s (%s)',
+            $adminName,
+            $actionText,
+            $taskName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
+    }
+
+    private function logTaskDeleteAction(Request $request, Admin $admin, string $taskName): void
+    {
+        $adminName = $admin->full_name ?: 'unknown admin';
+
+        $log = new Log();
+        $log->admin_id = $admin->id;
+        $log->employee_id = null;
+        $log->model = class_basename(Task::class);
+        $log->action = 'delete';
+        $log->description = sprintf(
+            'admin(%s) deleted task (%s)',
+            $adminName,
+            $taskName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
     }
 }

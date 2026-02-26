@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Employee\Employee;
 use App\Http\Controllers\Controller;
 use App\Models\Attendence;
 use App\Models\Employee;
+use App\Models\Log;
 use App\Models\ReportSubmission;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -44,6 +45,7 @@ class EmployeeAttendenceController extends Controller
         $attendances->getCollection()->transform(
             fn (Attendence $attendance) => $this->transformAttendance($attendance)
         );
+        $this->logEmployeeAttendanceAction($request, $employee, 'view', 'viewed attendance history');
 
         return response()->json([
             'status' => true,
@@ -114,6 +116,7 @@ class EmployeeAttendenceController extends Controller
         $attendance->profile_image = $request->file('profile_image')->store('attendence/mark_in', 'public');
         $attendance->save();
         $attendance->load('employee');
+        $this->logEmployeeAttendanceAction($request, $employee, 'mark_in', 'marked attendance in');
 
         return response()->json([
             'status' => true,
@@ -169,6 +172,7 @@ class EmployeeAttendenceController extends Controller
         ]);
 
         $attendance->load('employee');
+        $this->logEmployeeAttendanceAction($request, $employee, 'mark_out', 'marked attendance out');
 
         return response()->json([
             'status' => true,
@@ -227,6 +231,7 @@ class EmployeeAttendenceController extends Controller
         $attendance->profile_image = $request->file('profile_image')->store('attendence/break_start', 'public');
         $attendance->save();
         $attendance->load('employee');
+        $this->logEmployeeAttendanceAction($request, $employee, 'break_start', 'started break');
 
         return response()->json([
             'status' => true,
@@ -280,6 +285,7 @@ class EmployeeAttendenceController extends Controller
         $attendance->profile_image = $request->file('profile_image')->store('attendence/break_end', 'public');
         $attendance->save();
         $attendance->load('employee');
+        $this->logEmployeeAttendanceAction($request, $employee, 'break_end', 'ended break');
 
         return response()->json([
             'status' => true,
@@ -395,5 +401,24 @@ class EmployeeAttendenceController extends Controller
         }
 
         return base64_decode(strtr($value, '-_', '+/'), true);
+    }
+
+    private function logEmployeeAttendanceAction(Request $request, Employee $employee, string $action, string $actionText): void
+    {
+        $employeeName = $employee->emp_name ?: 'unknown employee';
+
+        $log = new Log();
+        $log->admin_id = null;
+        $log->employee_id = $employee->id;
+        $log->model = class_basename(Attendence::class);
+        $log->action = $action;
+        $log->description = sprintf(
+            'employee(%s) %s',
+            $employeeName,
+            $actionText
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
     }
 }

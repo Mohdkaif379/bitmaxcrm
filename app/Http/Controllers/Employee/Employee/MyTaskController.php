@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Employee\Employee;
 use App\Http\Controllers\Controller;
 use App\Models\Employee;
 use App\Models\EmployeeTask;
+use App\Models\Log;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
@@ -73,6 +74,7 @@ class MyTaskController extends Controller
             })
             ->values()
             ->all();
+        $this->logEmployeeTaskAction($request, $employee, 'view', 'viewed assigned tasks');
 
         return response()->json([
             'status' => true,
@@ -117,6 +119,7 @@ class MyTaskController extends Controller
         $assignment->task->status = $validated['status'];
         $assignment->task->save();
         $assignment->refresh()->load(['employee', 'task']);
+        $this->logEmployeeTaskStatusAction($request, $employee, $assignment, $validated['status']);
 
         $employeeData = $assignment->employee ? $assignment->employee->toArray() : null;
         if (is_array($employeeData)) {
@@ -227,5 +230,49 @@ class MyTaskController extends Controller
         }
 
         return base64_decode(strtr($value, '-_', '+/'), true);
+    }
+
+    private function logEmployeeTaskAction(Request $request, Employee $employee, string $action, string $actionText): void
+    {
+        $employeeName = $employee->emp_name ?: 'unknown employee';
+
+        $log = new Log();
+        $log->admin_id = null;
+        $log->employee_id = $employee->id;
+        $log->model = class_basename(EmployeeTask::class);
+        $log->action = $action;
+        $log->description = sprintf(
+            'employee(%s) %s',
+            $employeeName,
+            $actionText
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
+    }
+
+    private function logEmployeeTaskStatusAction(
+        Request $request,
+        Employee $employee,
+        EmployeeTask $assignment,
+        string $status
+    ): void {
+        $employeeName = $employee->emp_name ?: 'unknown employee';
+        $taskName = $assignment->task?->task_name ?: 'unknown task';
+
+        $log = new Log();
+        $log->admin_id = null;
+        $log->employee_id = $employee->id;
+        $log->model = class_basename(EmployeeTask::class);
+        $log->action = 'update_status';
+        $log->description = sprintf(
+            'employee(%s) updated task(%s) status to %s',
+            $employeeName,
+            $taskName,
+            $status
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
     }
 }

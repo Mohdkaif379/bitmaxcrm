@@ -5,6 +5,7 @@ namespace App\Http\Controllers\HrMisReport;
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\HrMisReport;
+use App\Models\Log;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
@@ -95,6 +96,7 @@ class HrMisReportController extends Controller
         $this->fillReportData($report, $validated);
         $report->created_by = $admin->id;
         $report->save();
+        $this->logHrMisReportAction($request, $admin, $report, 'create', 'created HR MIS report');
 
         return response()->json([
             'status' => true,
@@ -149,6 +151,7 @@ class HrMisReportController extends Controller
         $validated = $this->validateReportPayload($request, true);
         $this->fillReportData($report, $validated);
         $report->save();
+        $this->logHrMisReportAction($request, $admin, $report, 'update', 'updated HR MIS report');
 
         return response()->json([
             'status' => true,
@@ -175,7 +178,9 @@ class HrMisReportController extends Controller
             ], 404);
         }
 
+        $reportType = $report->report_type ?: 'unknown type';
         $report->delete();
+        $this->logHrMisReportDeleteAction($request, $admin, $reportType);
 
         return response()->json([
             'status' => true,
@@ -352,5 +357,50 @@ class HrMisReportController extends Controller
         }
 
         return base64_decode(strtr($value, '-_', '+/'), true);
+    }
+
+    private function logHrMisReportAction(
+        Request $request,
+        Admin $admin,
+        HrMisReport $report,
+        string $action,
+        string $actionText
+    ): void {
+        $adminName = $admin->full_name ?: 'unknown admin';
+        $reportType = $report->report_type ?: 'unknown type';
+
+        $log = new Log();
+        $log->admin_id = $admin->id;
+        $log->employee_id = null;
+        $log->model = class_basename($report);
+        $log->action = $action;
+        $log->description = sprintf(
+            'admin(%s) %s (%s)',
+            $adminName,
+            $actionText,
+            $reportType
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
+    }
+
+    private function logHrMisReportDeleteAction(Request $request, Admin $admin, string $reportType): void
+    {
+        $adminName = $admin->full_name ?: 'unknown admin';
+
+        $log = new Log();
+        $log->admin_id = $admin->id;
+        $log->employee_id = null;
+        $log->model = class_basename(HrMisReport::class);
+        $log->action = 'delete';
+        $log->description = sprintf(
+            'admin(%s) deleted HR MIS report (%s)',
+            $adminName,
+            $reportType
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
     }
 }

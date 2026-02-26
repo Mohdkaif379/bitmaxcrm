@@ -4,7 +4,9 @@ namespace App\Http\Controllers\LeadInteraction;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
+use App\Models\Lead;
 use App\Models\LeadInteraction;
+use App\Models\Log;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
@@ -98,6 +100,7 @@ class LeadInteractionController extends Controller
         $interaction->next_follow_up_date = $validated['next_follow_up_date'] ?? null;
         $interaction->created_by = $admin->id;
         $interaction->save();
+        $this->logLeadInteractionAction($request, $admin, $interaction, 'create', 'created lead interaction for');
 
         return response()->json([
             'status' => true,
@@ -189,6 +192,7 @@ class LeadInteractionController extends Controller
         }
 
         $interaction->save();
+        $this->logLeadInteractionAction($request, $admin, $interaction, 'update', 'updated lead interaction for');
 
         return response()->json([
             'status' => true,
@@ -215,7 +219,9 @@ class LeadInteractionController extends Controller
             ], 404);
         }
 
+        $leadName = $this->resolveLeadName($interaction->lead_id);
         $interaction->delete();
+        $this->logLeadInteractionDeleteAction($request, $admin, $leadName);
 
         return response()->json([
             'status' => true,
@@ -309,5 +315,60 @@ class LeadInteractionController extends Controller
         }
 
         return base64_decode(strtr($value, '-_', '+/'), true);
+    }
+
+    private function logLeadInteractionAction(
+        Request $request,
+        Admin $admin,
+        LeadInteraction $interaction,
+        string $action,
+        string $actionText
+    ): void {
+        $adminName = $admin->full_name ?: 'unknown admin';
+        $leadName = $this->resolveLeadName($interaction->lead_id);
+
+        $log = new Log();
+        $log->admin_id = $admin->id;
+        $log->employee_id = null;
+        $log->model = class_basename($interaction);
+        $log->action = $action;
+        $log->description = sprintf(
+            'admin(%s) %s lead(%s)',
+            $adminName,
+            $actionText,
+            $leadName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
+    }
+
+    private function logLeadInteractionDeleteAction(Request $request, Admin $admin, string $leadName): void
+    {
+        $adminName = $admin->full_name ?: 'unknown admin';
+
+        $log = new Log();
+        $log->admin_id = $admin->id;
+        $log->employee_id = null;
+        $log->model = class_basename(LeadInteraction::class);
+        $log->action = 'delete';
+        $log->description = sprintf(
+            'admin(%s) deleted lead interaction for lead(%s)',
+            $adminName,
+            $leadName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
+    }
+
+    private function resolveLeadName(?int $leadId): string
+    {
+        if (!$leadId) {
+            return 'unknown lead';
+        }
+
+        $lead = Lead::find($leadId);
+        return $lead?->name ?: 'unknown lead';
     }
 }

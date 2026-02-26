@@ -10,6 +10,7 @@ use App\Models\EmployeeBankDetails;
 use App\Models\EmployeeDocuments;
 use App\Models\EmployeeExperience;
 use App\Models\EmployeeFamilyDetails;
+use App\Models\Log;
 use App\Models\EmployeePayroll;
 use App\Models\EmployeeQualification;
 use Illuminate\Http\Request;
@@ -88,6 +89,8 @@ class EmployeeController extends Controller
                 'experiences',
             ]);
         });
+
+        $this->logEmployeeAction($request, $employee, 'create', 'created employee');
 
         return response()->json([
             'status' => true,
@@ -225,6 +228,8 @@ class EmployeeController extends Controller
             ]);
         });
 
+        $this->logEmployeeAction($request, $employee, 'update', 'updated employee');
+
         return response()->json([
             'status' => true,
             'message' => 'Employee updated successfully.',
@@ -250,6 +255,9 @@ class EmployeeController extends Controller
             ], 404);
         }
 
+        $employeeId = $employee->id;
+        $employeeName = $employee->emp_name ?: 'unknown employee';
+
         DB::transaction(function () use ($employee) {
             if ($employee->profile_photo && Storage::disk('public')->exists($employee->profile_photo)) {
                 Storage::disk('public')->delete($employee->profile_photo);
@@ -273,6 +281,8 @@ class EmployeeController extends Controller
 
             $employee->delete();
         });
+
+        $this->logEmployeeDeleteAction($request, $employeeId, $employeeName);
 
         return response()->json([
             'status' => true,
@@ -821,5 +831,51 @@ class EmployeeController extends Controller
         }
 
         return base64_decode(strtr($value, '-_', '+/'), true);
+    }
+
+    private function logEmployeeAction(Request $request, Employee $employee, string $action, string $actionText): void
+    {
+        /** @var Admin|null $admin */
+        $admin = $request->attributes->get('auth_admin');
+        $adminId = $admin?->id;
+        $adminName = $admin?->full_name ?: 'unknown admin';
+        $employeeName = $employee->emp_name ?: 'unknown employee';
+
+        $log = new Log();
+        $log->admin_id = $adminId;
+        $log->employee_id = $employee->id;
+        $log->model = class_basename($employee);
+        $log->action = $action;
+        $log->description = sprintf(
+            'admin(%s) %s employee(%s)',
+            $adminName,
+            $actionText,
+            $employeeName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
+    }
+
+    private function logEmployeeDeleteAction(Request $request, ?int $employeeId, string $employeeName): void
+    {
+        /** @var Admin|null $admin */
+        $admin = $request->attributes->get('auth_admin');
+        $adminId = $admin?->id;
+        $adminName = $admin?->full_name ?: 'unknown admin';
+
+        $log = new Log();
+        $log->admin_id = $adminId;
+        $log->employee_id = $employeeId;
+        $log->model = class_basename(Employee::class);
+        $log->action = 'delete';
+        $log->description = sprintf(
+            'admin(%s) deleted employee(%s)',
+            $adminName,
+            $employeeName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
     }
 }

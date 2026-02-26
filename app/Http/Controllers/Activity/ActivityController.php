@@ -8,6 +8,7 @@ use App\Models\Admin;
 use App\Models\BestEmployee;
 use App\Models\Employee;
 use App\Models\EvaluationCriteria;
+use App\Models\Log;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -132,6 +133,8 @@ class ActivityController extends Controller
 
                 return $activity->fresh();
             });
+
+            $this->logActivityAction($request, $admin, $activity, 'create', 'created activity for');
 
             return response()->json([
                 'status' => true,
@@ -268,6 +271,8 @@ class ActivityController extends Controller
             ], 422);
         }
 
+        $this->logActivityAction($request, $admin, $updatedActivity, 'update', 'updated activity for');
+
         return response()->json([
             'status' => true,
             'message' => 'Activity updated successfully.',
@@ -293,7 +298,9 @@ class ActivityController extends Controller
             ], 404);
         }
 
+        $employeeNames = $this->resolveActivityEmployeeNames($activity);
         $activity->delete();
+        $this->logActivityDeleteAction($request, $admin, $employeeNames);
 
         return response()->json([
             'status' => true,
@@ -468,5 +475,66 @@ class ActivityController extends Controller
         }
 
         return base64_decode(strtr($value, '-_', '+/'), true);
+    }
+
+    private function logActivityAction(
+        Request $request,
+        Admin $admin,
+        Activity $activity,
+        string $action,
+        string $actionText
+    ): void {
+        $adminName = $admin->full_name ?: 'unknown admin';
+        $employeeNames = $this->resolveActivityEmployeeNames($activity);
+
+        $log = new Log();
+        $log->admin_id = $admin->id;
+        $log->employee_id = $activity->employee_id;
+        $log->model = class_basename($activity);
+        $log->action = $action;
+        $log->description = sprintf(
+            'admin(%s) %s employee(%s)',
+            $adminName,
+            $actionText,
+            $employeeNames
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
+    }
+
+    private function logActivityDeleteAction(Request $request, Admin $admin, string $employeeNames): void
+    {
+        $adminName = $admin->full_name ?: 'unknown admin';
+
+        $log = new Log();
+        $log->admin_id = $admin->id;
+        $log->employee_id = null;
+        $log->model = class_basename(Activity::class);
+        $log->action = 'delete';
+        $log->description = sprintf(
+            'admin(%s) deleted activity for employee(%s)',
+            $adminName,
+            $employeeNames
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
+    }
+
+    private function resolveActivityEmployeeNames(Activity $activity): string
+    {
+        $ids = $activity->employee_ids;
+        if (!is_array($ids) || empty($ids)) {
+            $ids = [$activity->employee_id];
+        }
+
+        $names = Employee::whereIn('id', array_values(array_unique(array_map('intval', array_filter($ids)))))
+            ->pluck('emp_name')
+            ->filter()
+            ->values()
+            ->all();
+
+        return !empty($names) ? implode(', ', $names) : 'unknown employee';
     }
 }

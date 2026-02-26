@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Employee;
 use App\Models\EmployeeDocuments;
 use App\Models\EmployeeFamilyDetails;
+use App\Models\Log;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
@@ -33,6 +34,7 @@ class MyProfileController extends Controller
             'experiences',
             'tasks',
         ]);
+        $this->logEmployeeProfileAction($request, $employee, 'view', 'viewed profile');
 
         return response()->json([
             'status' => true,
@@ -108,6 +110,7 @@ class MyProfileController extends Controller
             'experiences',
             'tasks',
         ]);
+        $this->logEmployeeProfileAction($request, $employee, 'update', 'updated profile');
 
         return response()->json([
             'status' => true,
@@ -246,5 +249,24 @@ class MyProfileController extends Controller
         }
 
         return base64_decode(strtr($value, '-_', '+/'), true);
+    }
+
+    private function logEmployeeProfileAction(Request $request, Employee $employee, string $action, string $actionText): void
+    {
+        $employeeName = $employee->emp_name ?: 'unknown employee';
+
+        $log = new Log();
+        $log->admin_id = null;
+        $log->employee_id = $employee->id;
+        $log->model = class_basename(Employee::class);
+        $log->action = $action;
+        $log->description = sprintf(
+            'employee(%s) %s',
+            $employeeName,
+            $actionText
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\SubAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
+use App\Models\Log;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
@@ -74,6 +75,7 @@ class SubAdminController extends Controller
         $subAdmin->status = $validated['status'] ?? true;
         $subAdmin->bio = $validated['bio'] ?? null;
         $subAdmin->save();
+        $this->logSubAdminAction($request, $admin, $subAdmin, 'create', 'created sub admin');
 
         return response()->json([
             'status' => true,
@@ -174,6 +176,7 @@ class SubAdminController extends Controller
 
         $subAdmin->role = self::SUB_ADMIN_ROLE;
         $subAdmin->save();
+        $this->logSubAdminAction($request, $admin, $subAdmin, 'update', 'updated sub admin');
 
         return response()->json([
             'status' => true,
@@ -204,7 +207,9 @@ class SubAdminController extends Controller
             Storage::disk('public')->delete($subAdmin->profile_photo);
         }
 
+        $subAdminName = $subAdmin->full_name ?: 'unknown sub admin';
         $subAdmin->delete();
+        $this->logSubAdminDeleteAction($request, $admin, $subAdminName);
 
         return response()->json([
             'status' => true,
@@ -365,5 +370,53 @@ class SubAdminController extends Controller
         }
 
         return base64_decode(strtr($value, '-_', '+/'), true);
+    }
+
+    private function logSubAdminAction(
+        Request $request,
+        Admin $actorAdmin,
+        Admin $subAdmin,
+        string $action,
+        string $actionText
+    ): void {
+        $actorName = $actorAdmin->full_name ?: 'unknown admin';
+        $subAdminName = $subAdmin->full_name ?: 'unknown sub admin';
+
+        $log = new Log();
+        $log->admin_id = $actorAdmin->id;
+        $log->employee_id = null;
+        $log->model = class_basename($subAdmin);
+        $log->action = $action;
+        $log->description = sprintf(
+            'admin(%s) %s (%s)',
+            $actorName,
+            $actionText,
+            $subAdminName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
+    }
+
+    private function logSubAdminDeleteAction(
+        Request $request,
+        Admin $actorAdmin,
+        string $subAdminName
+    ): void {
+        $actorName = $actorAdmin->full_name ?: 'unknown admin';
+
+        $log = new Log();
+        $log->admin_id = $actorAdmin->id;
+        $log->employee_id = null;
+        $log->model = class_basename(Admin::class);
+        $log->action = 'delete';
+        $log->description = sprintf(
+            'admin(%s) deleted sub admin (%s)',
+            $actorName,
+            $subAdminName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
     }
 }

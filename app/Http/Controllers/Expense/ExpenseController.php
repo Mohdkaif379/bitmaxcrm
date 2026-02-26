@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Expense;
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\Expenses;
+use App\Models\Log;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
@@ -101,6 +102,7 @@ class ExpenseController extends Controller
         $expense->created_by = $admin->id;
         $expense->save();
         $expense->load('creator');
+        $this->logExpenseAction($request, $admin, $expense, 'create', 'created expense');
 
         return response()->json([
             'status' => true,
@@ -177,6 +179,7 @@ class ExpenseController extends Controller
 
         $expense->save();
         $expense->load('creator');
+        $this->logExpenseAction($request, $admin, $expense, 'update', 'updated expense');
 
         return response()->json([
             'status' => true,
@@ -203,7 +206,9 @@ class ExpenseController extends Controller
             ], 404);
         }
 
+        $expenseTitle = $expense->title ?: 'unknown expense';
         $expense->delete();
+        $this->logExpenseDeleteAction($request, $admin, $expenseTitle);
 
         return response()->json([
             'status' => true,
@@ -310,5 +315,50 @@ class ExpenseController extends Controller
         }
 
         return base64_decode(strtr($value, '-_', '+/'), true);
+    }
+
+    private function logExpenseAction(
+        Request $request,
+        Admin $admin,
+        Expenses $expense,
+        string $action,
+        string $actionText
+    ): void {
+        $adminName = $admin->full_name ?: 'unknown admin';
+        $expenseTitle = $expense->title ?: 'unknown expense';
+
+        $log = new Log();
+        $log->admin_id = $admin->id;
+        $log->employee_id = null;
+        $log->model = class_basename($expense);
+        $log->action = $action;
+        $log->description = sprintf(
+            'admin(%s) %s (%s)',
+            $adminName,
+            $actionText,
+            $expenseTitle
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
+    }
+
+    private function logExpenseDeleteAction(Request $request, Admin $admin, string $expenseTitle): void
+    {
+        $adminName = $admin->full_name ?: 'unknown admin';
+
+        $log = new Log();
+        $log->admin_id = $admin->id;
+        $log->employee_id = null;
+        $log->model = class_basename(Expenses::class);
+        $log->action = 'delete';
+        $log->description = sprintf(
+            'admin(%s) deleted expense (%s)',
+            $adminName,
+            $expenseTitle
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
     }
 }

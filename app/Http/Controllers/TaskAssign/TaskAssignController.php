@@ -4,7 +4,10 @@ namespace App\Http\Controllers\TaskAssign;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
+use App\Models\Employee;
 use App\Models\EmployeeTask;
+use App\Models\Log;
+use App\Models\Task;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
@@ -105,6 +108,7 @@ class TaskAssignController extends Controller
 
         $assignment->save();
         $assignment->load(['employee', 'task']);
+        $this->logTaskAssignAction($request, $admin, $assignment, 'create', 'assigned task');
 
         return response()->json([
             'status' => true,
@@ -181,6 +185,7 @@ class TaskAssignController extends Controller
         $assignment->task_id = $taskId;
         $assignment->save();
         $assignment->load(['employee', 'task']);
+        $this->logTaskAssignAction($request, $admin, $assignment, 'update', 'updated task assignment');
 
         return response()->json([
             'status' => true,
@@ -207,7 +212,11 @@ class TaskAssignController extends Controller
             ], 404);
         }
 
+        $employeeId = $assignment->employee_id;
+        $employeeName = $this->resolveEmployeeName($employeeId);
+        $taskName = $this->resolveTaskName($assignment->task_id);
         $assignment->delete();
+        $this->logTaskAssignDeleteAction($request, $admin, $employeeId, $employeeName, $taskName);
 
         return response()->json([
             'status' => true,
@@ -320,5 +329,78 @@ class TaskAssignController extends Controller
         }
 
         return base64_decode(strtr($value, '-_', '+/'), true);
+    }
+
+    private function logTaskAssignAction(
+        Request $request,
+        Admin $admin,
+        EmployeeTask $assignment,
+        string $action,
+        string $actionText
+    ): void {
+        $adminName = $admin->full_name ?: 'unknown admin';
+        $employeeName = $this->resolveEmployeeName($assignment->employee_id);
+        $taskName = $this->resolveTaskName($assignment->task_id);
+
+        $log = new Log();
+        $log->admin_id = $admin->id;
+        $log->employee_id = $assignment->employee_id;
+        $log->model = class_basename($assignment);
+        $log->action = $action;
+        $log->description = sprintf(
+            'admin(%s) %s (%s) to employee(%s)',
+            $adminName,
+            $actionText,
+            $taskName,
+            $employeeName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
+    }
+
+    private function logTaskAssignDeleteAction(
+        Request $request,
+        Admin $admin,
+        ?int $employeeId,
+        string $employeeName,
+        string $taskName
+    ): void {
+        $adminName = $admin->full_name ?: 'unknown admin';
+
+        $log = new Log();
+        $log->admin_id = $admin->id;
+        $log->employee_id = $employeeId;
+        $log->model = class_basename(EmployeeTask::class);
+        $log->action = 'delete';
+        $log->description = sprintf(
+            'admin(%s) deleted task assignment (%s) for employee(%s)',
+            $adminName,
+            $taskName,
+            $employeeName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
+    }
+
+    private function resolveEmployeeName(?int $employeeId): string
+    {
+        if (!$employeeId) {
+            return 'unknown employee';
+        }
+
+        $employee = Employee::find($employeeId);
+        return $employee?->emp_name ?: 'unknown employee';
+    }
+
+    private function resolveTaskName(?int $taskId): string
+    {
+        if (!$taskId) {
+            return 'unknown task';
+        }
+
+        $task = Task::find($taskId);
+        return $task?->task_name ?: 'unknown task';
     }
 }

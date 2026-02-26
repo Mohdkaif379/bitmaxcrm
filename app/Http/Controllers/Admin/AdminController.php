@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
+use App\Models\Log;
 use App\Models\LoginHistory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -42,6 +43,7 @@ class AdminController extends Controller
         $loginHistory->save();
 
         $token = $this->createJwtToken($admin, $loginHistory->id);
+        $this->logAdminAction($request, $admin, $admin, 'login', 'logged in');
 
         return response()->json([
             'status' => true,
@@ -86,6 +88,9 @@ class AdminController extends Controller
                 $loginHistory->save();
             }
         }
+
+        $actorAdmin = isset($payload['sub']) ? Admin::find((int) $payload['sub']) : null;
+        $this->logAdminAction($request, $actorAdmin, $actorAdmin, 'logout', 'logged out');
 
         return response()->json([
             'status' => true,
@@ -144,6 +149,8 @@ class AdminController extends Controller
         $admin->company_logo = $companyLogoPath;
         $admin->company_name = $validated['company_name'] ?? null;
         $admin->save();
+        $actorAdmin = $this->authenticatedAdminFromToken($request);
+        $this->logAdminAction($request, $actorAdmin, $admin, 'create', 'created admin');
 
         return response()->json([
             'status' => true,
@@ -269,6 +276,7 @@ class AdminController extends Controller
 
         $admin->save();
         $this->incrementProfileUpdateCount($admin->id);
+        $this->logAdminAction($request, $admin, $admin, 'update', 'updated admin profile');
 
         return response()->json([
             'status' => true,
@@ -295,7 +303,9 @@ class AdminController extends Controller
             Storage::disk('public')->delete($admin->company_logo);
         }
 
+        $targetAdminName = $admin->full_name ?: 'unknown admin';
         $admin->delete();
+        $this->logAdminDeleteAction($request, $admin, $targetAdminName);
 
         return response()->json([
             'status' => true,
@@ -457,5 +467,53 @@ class AdminController extends Controller
         }
 
         return Admin::find($adminId);
+    }
+
+    private function logAdminAction(
+        Request $request,
+        ?Admin $actorAdmin,
+        ?Admin $targetAdmin,
+        string $action,
+        string $actionText
+    ): void {
+        $actorName = $actorAdmin?->full_name ?: 'unknown admin';
+        $targetName = $targetAdmin?->full_name ?: 'unknown admin';
+
+        $log = new Log();
+        $log->admin_id = $actorAdmin?->id;
+        $log->employee_id = null;
+        $log->model = class_basename(Admin::class);
+        $log->action = $action;
+        $log->description = sprintf(
+            'admin(%s) %s admin(%s)',
+            $actorName,
+            $actionText,
+            $targetName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
+    }
+
+    private function logAdminDeleteAction(
+        Request $request,
+        Admin $actorAdmin,
+        string $targetAdminName
+    ): void {
+        $actorName = $actorAdmin->full_name ?: 'unknown admin';
+
+        $log = new Log();
+        $log->admin_id = $actorAdmin->id;
+        $log->employee_id = null;
+        $log->model = class_basename(Admin::class);
+        $log->action = 'delete';
+        $log->description = sprintf(
+            'admin(%s) deleted admin(%s)',
+            $actorName,
+            $targetAdminName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
     }
 }

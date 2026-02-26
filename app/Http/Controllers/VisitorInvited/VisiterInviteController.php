@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\VisitorInvited;
 
 use App\Http\Controllers\Controller;
+use App\Models\Admin;
+use App\Models\Log;
 use App\Models\VisitorInvited;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class VisiterInviteController extends Controller
 {
@@ -48,6 +51,8 @@ class VisiterInviteController extends Controller
 
     public function store(Request $request)
     {
+        $admin = $this->authenticatedAdminFromToken($request);
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:visitor_inviteds,email'],
@@ -69,6 +74,7 @@ class VisiterInviteController extends Controller
         $visitor->visit_date = $validated['visit_date'] ?? null;
         $visitor->invite_code = $validated['invite_code'] ?? $this->generateInviteCode();
         $visitor->save();
+        $this->logVisitorAction($request, $admin, $visitor, 'create', 'created visitor invite');
 
         return response()->json([
             'status' => true,
@@ -97,6 +103,8 @@ class VisiterInviteController extends Controller
 
     public function update(Request $request, int $id)
     {
+        $admin = $this->authenticatedAdminFromToken($request);
+
         $visitor = VisitorInvited::find($id);
 
         if (!$visitor) {
@@ -143,6 +151,7 @@ class VisiterInviteController extends Controller
         }
 
         $visitor->save();
+        $this->logVisitorAction($request, $admin, $visitor, 'update', 'updated visitor invite');
 
         return response()->json([
             'status' => true,
@@ -151,8 +160,10 @@ class VisiterInviteController extends Controller
         ]);
     }
 
-    public function destroy(int $id)
+    public function destroy(Request $request, int $id)
     {
+        $admin = $this->authenticatedAdminFromToken($request);
+
         $visitor = VisitorInvited::find($id);
 
         if (!$visitor) {
@@ -162,7 +173,9 @@ class VisiterInviteController extends Controller
             ], 404);
         }
 
+        $visitorName = $visitor->name ?: 'unknown visitor';
         $visitor->delete();
+        $this->logVisitorDeleteAction($request, $admin, $visitorName);
 
         return response()->json([
             'status' => true,
@@ -177,5 +190,138 @@ class VisiterInviteController extends Controller
         } while (VisitorInvited::where('invite_code', $code)->exists());
 
         return $code;
+    }
+
+    private function authenticatedAdminFromToken(Request $request): ?Admin
+    {
+        $token = $request->bearerToken();
+        if (!$token) {
+            return null;
+        }
+
+        $payload = $this->decodeJwtToken($token);
+        if (!$payload) {
+            return null;
+        }
+
+        if (($payload['role'] ?? null) !== 'admin') {
+            return null;
+        }
+
+        $adminId = (int) ($payload['sub'] ?? 0);
+        if ($adminId <= 0) {
+            return null;
+        }
+
+        return Admin::find($adminId);
+    }
+
+    private function decodeJwtToken(string $token): ?array
+    {
+        $parts = explode('.', $token);
+        if (count($parts) !== 3) {
+            return null;
+        }
+
+        [$encodedHeader, $encodedPayload, $encodedSignature] = $parts;
+        $signature = $this->base64UrlDecode($encodedSignature);
+        if ($signature === false) {
+            return null;
+        }
+
+        $expectedSignature = hash_hmac('sha256', $encodedHeader . '.' . $encodedPayload, $this->jwtSecret(), true);
+        if (!hash_equals($expectedSignature, $signature)) {
+            return null;
+        }
+
+        $payloadJson = $this->base64UrlDecode($encodedPayload);
+        if ($payloadJson === false) {
+            return null;
+        }
+
+        $payload = json_decode($payloadJson, true);
+        if (!is_array($payload)) {
+            return null;
+        }
+
+        $blacklistKey = 'admin_jwt_blacklist:' . hash('sha256', $token);
+        if (Cache::has($blacklistKey)) {
+            return null;
+        }
+
+        return $payload;
+    }
+
+    private function jwtSecret(): string
+    {
+        $secret = env('JWT_SECRET');
+        if (!empty($secret)) {
+            return $secret;
+        }
+
+        $appKey = (string) config('app.key', '');
+        if (str_starts_with($appKey, 'base64:')) {
+            $decoded = base64_decode(substr($appKey, 7), true);
+            if ($decoded !== false) {
+                return $decoded;
+            }
+        }
+
+        return $appKey;
+    }
+
+    private function base64UrlDecode(string $value): string|false
+    {
+        $remainder = strlen($value) % 4;
+        if ($remainder) {
+            $value .= str_repeat('=', 4 - $remainder);
+        }
+
+        return base64_decode(strtr($value, '-_', '+/'), true);
+    }
+
+    private function logVisitorAction(
+        Request $request,
+        ?Admin $admin,
+        VisitorInvited $visitor,
+        string $action,
+        string $actionText
+    ): void {
+        $adminName = $admin?->full_name ?: 'unknown admin';
+        $visitorName = $visitor->name ?: 'unknown visitor';
+
+        $log = new Log();
+        $log->admin_id = $admin?->id;
+        $log->employee_id = null;
+        $log->model = class_basename($visitor);
+        $log->action = $action;
+        $log->description = sprintf(
+            'admin(%s) %s (%s)',
+            $adminName,
+            $actionText,
+            $visitorName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
+    }
+
+    private function logVisitorDeleteAction(Request $request, ?Admin $admin, string $visitorName): void
+    {
+        $adminName = $admin?->full_name ?: 'unknown admin';
+
+        $log = new Log();
+        $log->admin_id = $admin?->id;
+        $log->employee_id = null;
+        $log->model = class_basename(VisitorInvited::class);
+        $log->action = 'delete';
+        $log->description = sprintf(
+            'admin(%s) deleted visitor invite (%s)',
+            $adminName,
+            $visitorName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
     }
 }

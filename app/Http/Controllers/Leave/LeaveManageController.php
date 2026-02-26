@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Leave;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
+use App\Models\Employee;
 use App\Models\LeaveManagement;
+use App\Models\Log;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -67,6 +69,7 @@ class LeaveManageController extends Controller
         $leave->approved_by = $admin->id;
         $leave->save();
         $leave->load(['employee', 'approvedBy']);
+        $this->logLeaveAction($request, $admin, $leave, 'approve', 'updated leave request status for');
 
         return response()->json([
             'status' => true,
@@ -138,6 +141,7 @@ class LeaveManageController extends Controller
         $leave->total_days = Carbon::parse($leave->start_date)->diffInDays(Carbon::parse($leave->end_date)) + 1;
         $leave->save();
         $leave->load(['employee', 'approvedBy']);
+        $this->logLeaveAction($request, $admin, $leave, 'update', 'edited leave request for');
 
         return response()->json([
             'status' => true,
@@ -171,7 +175,10 @@ class LeaveManageController extends Controller
             }
         }
 
+        $employeeId = $leave->employee_id;
+        $employeeName = $this->resolveEmployeeName($employeeId);
         $leave->delete();
+        $this->logLeaveDeleteAction($request, $admin, $employeeId, $employeeName);
 
         return response()->json([
             'status' => true,
@@ -292,5 +299,60 @@ class LeaveManageController extends Controller
         }
 
         return base64_decode(strtr($value, '-_', '+/'), true);
+    }
+
+    private function logLeaveAction(
+        Request $request,
+        Admin $admin,
+        LeaveManagement $leave,
+        string $action,
+        string $actionText
+    ): void {
+        $adminName = $admin->full_name ?: 'unknown admin';
+        $employeeName = $this->resolveEmployeeName($leave->employee_id);
+
+        $log = new Log();
+        $log->admin_id = $admin->id;
+        $log->employee_id = $leave->employee_id;
+        $log->model = class_basename($leave);
+        $log->action = $action;
+        $log->description = sprintf(
+            'admin(%s) %s employee(%s)',
+            $adminName,
+            $actionText,
+            $employeeName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
+    }
+
+    private function logLeaveDeleteAction(Request $request, Admin $admin, ?int $employeeId, string $employeeName): void
+    {
+        $adminName = $admin->full_name ?: 'unknown admin';
+
+        $log = new Log();
+        $log->admin_id = $admin->id;
+        $log->employee_id = $employeeId;
+        $log->model = class_basename(LeaveManagement::class);
+        $log->action = 'delete';
+        $log->description = sprintf(
+            'admin(%s) deleted leave request for employee(%s)',
+            $adminName,
+            $employeeName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
+    }
+
+    private function resolveEmployeeName(?int $employeeId): string
+    {
+        if (!$employeeId) {
+            return 'unknown employee';
+        }
+
+        $employee = Employee::find($employeeId);
+        return $employee?->emp_name ?: 'unknown employee';
     }
 }

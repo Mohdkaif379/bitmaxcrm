@@ -5,6 +5,8 @@ namespace App\Http\Controllers\TourConveyance;
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\ConveyanceDetail;
+use App\Models\Employee;
+use App\Models\Log;
 use App\Models\TourConveyanceForm;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -92,6 +94,7 @@ class TourConevyanceFormController extends Controller
             ->get()
             ->values()
             ->all();
+        $this->logTourConveyanceAction($request, $admin, $form, 'create', 'created tour conveyance form for');
 
         return response()->json([
             'status' => true,
@@ -167,6 +170,7 @@ class TourConevyanceFormController extends Controller
             ->get()
             ->values()
             ->all();
+        $this->logTourConveyanceAction($request, $admin, $form, 'update', 'updated tour conveyance form for');
 
         return response()->json([
             'status' => true,
@@ -193,7 +197,10 @@ class TourConevyanceFormController extends Controller
             ], 404);
         }
 
+        $employeeName = $form->employee_name ?: 'unknown employee';
+        $resolvedEmployeeId = $this->resolveEmployeeIdFromForm($form);
         $form->delete();
+        $this->logTourConveyanceDeleteAction($request, $admin, $resolvedEmployeeId, $employeeName);
 
         return response()->json([
             'status' => true,
@@ -412,5 +419,71 @@ class TourConevyanceFormController extends Controller
         }
 
         return base64_decode(strtr($value, '-_', '+/'), true);
+    }
+
+    private function logTourConveyanceAction(
+        Request $request,
+        Admin $admin,
+        TourConveyanceForm $form,
+        string $action,
+        string $actionText
+    ): void {
+        $adminName = $admin->full_name ?: 'unknown admin';
+        $employeeName = $form->employee_name ?: 'unknown employee';
+        $resolvedEmployeeId = $this->resolveEmployeeIdFromForm($form);
+
+        $log = new Log();
+        $log->admin_id = $admin->id;
+        $log->employee_id = $resolvedEmployeeId;
+        $log->model = class_basename($form);
+        $log->action = $action;
+        $log->description = sprintf(
+            'admin(%s) %s employee(%s)',
+            $adminName,
+            $actionText,
+            $employeeName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
+    }
+
+    private function logTourConveyanceDeleteAction(
+        Request $request,
+        Admin $admin,
+        ?int $employeeId,
+        string $employeeName
+    ): void {
+        $adminName = $admin->full_name ?: 'unknown admin';
+
+        $log = new Log();
+        $log->admin_id = $admin->id;
+        $log->employee_id = $employeeId;
+        $log->model = class_basename(TourConveyanceForm::class);
+        $log->action = 'delete';
+        $log->description = sprintf(
+            'admin(%s) deleted tour conveyance form for employee(%s)',
+            $adminName,
+            $employeeName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
+    }
+
+    private function resolveEmployeeIdFromForm(TourConveyanceForm $form): ?int
+    {
+        $rawEmployeeId = trim((string) $form->employee_id);
+        if ($rawEmployeeId === '') {
+            return null;
+        }
+
+        if (ctype_digit($rawEmployeeId)) {
+            $id = (int) $rawEmployeeId;
+            return Employee::where('id', $id)->exists() ? $id : null;
+        }
+
+        $employee = Employee::where('emp_code', $rawEmployeeId)->first();
+        return $employee?->id;
     }
 }
