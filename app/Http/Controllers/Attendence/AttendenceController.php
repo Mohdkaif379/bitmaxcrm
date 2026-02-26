@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\Attendence;
 use App\Models\Employee;
+use App\Models\Log;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -108,6 +109,8 @@ class AttendenceController extends Controller
 
         $attendance->save();
 
+        $this->logAttendanceAction($request, $attendance, 'mark_in', 'marked attendance in');
+
         return response()->json([
             'status' => true,
             'message' => 'Mark in successful.',
@@ -153,6 +156,8 @@ class AttendenceController extends Controller
         }
 
         $attendance->save();
+
+        $this->logAttendanceAction($request, $attendance, 'mark_out', 'marked attendance out');
 
         return response()->json([
             'status' => true,
@@ -203,6 +208,8 @@ class AttendenceController extends Controller
 
         $attendance->save();
 
+        $this->logAttendanceAction($request, $attendance, 'break_start', 'started break');
+
         return response()->json([
             'status' => true,
             'message' => 'Break start successful.',
@@ -251,6 +258,8 @@ class AttendenceController extends Controller
         }
 
         $attendance->save();
+
+        $this->logAttendanceAction($request, $attendance, 'break_end', 'ended break');
 
         return response()->json([
             'status' => true,
@@ -324,6 +333,8 @@ class AttendenceController extends Controller
         $attendance->save();
         $attendance->load('employee');
 
+        $this->logAttendanceAction($request, $attendance, 'update', 'updated attendance');
+
         return response()->json([
             'status' => true,
             'message' => 'Attendance updated successfully.',
@@ -331,7 +342,7 @@ class AttendenceController extends Controller
         ]);
     }
 
-    public function destroy(int $id)
+    public function destroy(Request $request, int $id)
     {
         $attendance = Attendence::find($id);
 
@@ -351,7 +362,10 @@ class AttendenceController extends Controller
             }
         }
 
+        $employeeId = $attendance->employee_id;
         $attendance->delete();
+
+        $this->logAttendanceDeleteAction($request, $employeeId);
 
         return response()->json([
             'status' => true,
@@ -476,5 +490,88 @@ class AttendenceController extends Controller
         }
 
         return base64_decode(strtr($value, '-_', '+/'), true);
+    }
+
+    private function logAttendanceAction(Request $request, Attendence $attendance, string $action, string $actionText): void
+    {
+        $adminId = $this->resolveAdminIdFromToken($request);
+        $adminName = $this->resolveAdminName($adminId);
+        $employeeName = $this->resolveEmployeeName($attendance->employee_id);
+
+        $log = new Log();
+        $log->admin_id = $adminId;
+        $log->employee_id = $attendance->employee_id;
+        $log->model = class_basename($attendance);
+        $log->action = $action;
+        $log->description = sprintf(
+            '(%s) %s this employee(%s)',
+            $adminName,
+            $actionText,
+            $employeeName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
+    }
+
+    private function logAttendanceDeleteAction(Request $request, ?int $employeeId): void
+    {
+        $adminId = $this->resolveAdminIdFromToken($request);
+        $adminName = $this->resolveAdminName($adminId);
+        $employeeName = $this->resolveEmployeeName($employeeId);
+
+        $log = new Log();
+        $log->admin_id = $adminId;
+        $log->employee_id = $employeeId;
+        $log->model = class_basename(Attendence::class);
+        $log->action = 'delete';
+        $log->description = sprintf(
+            '(%s) deleted attendance for employee(%s)',
+            $adminName,
+            $employeeName
+        );
+        $log->ip_address = $request->ip();
+        $log->user_agent = (string) $request->userAgent();
+        $log->save();
+    }
+
+    private function resolveAdminIdFromToken(Request $request): ?int
+    {
+        $token = $request->bearerToken();
+        if (!$token) {
+            return null;
+        }
+
+        $payload = $this->decodeJwtToken($token);
+        if (!$payload || ($payload['role'] ?? null) !== 'admin') {
+            return null;
+        }
+
+        $adminId = (int) ($payload['sub'] ?? 0);
+        if ($adminId <= 0) {
+            return null;
+        }
+
+        return Admin::where('id', $adminId)->exists() ? $adminId : null;
+    }
+
+    private function resolveAdminName(?int $adminId): string
+    {
+        if (!$adminId) {
+            return 'unknown admin';
+        }
+
+        $admin = Admin::find($adminId);
+        return $admin?->full_name ?: 'unknown admin';
+    }
+
+    private function resolveEmployeeName(?int $employeeId): string
+    {
+        if (!$employeeId) {
+            return 'unknown employee';
+        }
+
+        $employee = Employee::find($employeeId);
+        return $employee?->emp_name ?: 'unknown employee';
     }
 }
