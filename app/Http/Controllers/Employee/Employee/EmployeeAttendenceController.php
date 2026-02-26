@@ -12,6 +12,72 @@ use Illuminate\Support\Facades\Storage;
 
 class EmployeeAttendenceController extends Controller
 {
+    public function myAttendance(Request $request)
+    {
+        $employee = $this->authenticatedEmployeeFromToken($request);
+        if (!$employee) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthorized. Valid employee token is required.',
+            ], 401);
+        }
+
+        $validated = $request->validate([
+            'month' => ['required', 'string', 'max:20'],
+            'year' => ['nullable', 'integer', 'min:2000', 'max:2100'],
+        ]);
+
+        $query = Attendence::with('employee')->where('employee_id', $employee->id);
+        $monthNumber = $this->monthNumberFromName($validated['month']);
+        if ($monthNumber === null) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Invalid month. Use month names like january, february, march.',
+            ], 422);
+        }
+
+        $year = (int) ($validated['year'] ?? now('Asia/Kolkata')->year);
+        $query->whereMonth('date', $monthNumber)
+            ->whereYear('date', $year);
+
+        $attendances = $query->latest()->paginate(10);
+        $attendances->getCollection()->transform(
+            fn (Attendence $attendance) => $this->transformAttendance($attendance)
+        );
+
+        return response()->json([
+            'status' => true,
+            'message' => 'My attendances fetched successfully.',
+            'data' => $attendances->items(),
+            'pagination' => [
+                'current_page' => $attendances->currentPage(),
+                'last_page' => $attendances->lastPage(),
+                'per_page' => $attendances->perPage(),
+                'total' => $attendances->total(),
+            ],
+        ]);
+    }
+
+    private function monthNumberFromName(string $month): ?int
+    {
+        $map = [
+            'january' => 1,
+            'february' => 2,
+            'march' => 3,
+            'april' => 4,
+            'may' => 5,
+            'june' => 6,
+            'july' => 7,
+            'august' => 8,
+            'september' => 9,
+            'october' => 10,
+            'november' => 11,
+            'december' => 12,
+        ];
+
+        return $map[strtolower(trim($month))] ?? null;
+    }
+
     public function markIn(Request $request)
     {
         $employee = $this->authenticatedEmployeeFromToken($request);

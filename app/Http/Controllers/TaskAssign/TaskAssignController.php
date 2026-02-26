@@ -245,7 +245,8 @@ class TaskAssignController extends Controller
             return null;
         }
 
-        if (($payload['role'] ?? null) !== 'admin') {
+        $role = strtolower((string) ($payload['role'] ?? ''));
+        if (!in_array($role, ['admin', 'sub_admin', 'subadmin'], true)) {
             return null;
         }
 

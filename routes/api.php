@@ -14,6 +14,7 @@ use App\Http\Controllers\Employee\Employee\EmployeeLeaveManageController;
 use App\Http\Controllers\Employee\Employee\MyProfileController;
 use App\Http\Controllers\Employee\Employee\MyTaskController;
 use App\Http\Controllers\Expense\ExpenseController;
+use App\Http\Controllers\HrMisReport\HrMisReportController;
 use App\Http\Controllers\Leads\LeadController;
 use App\Http\Controllers\LeadInteraction\LeadInteractionController;
 use App\Http\Controllers\Leave\LeaveManageController;
@@ -62,6 +63,12 @@ Route::post('expense/create', [ExpenseController::class, 'store']);
 Route::get('expense/{id}', [ExpenseController::class, 'show']);
 Route::put('expense/update/{id}', [ExpenseController::class, 'update']);
 Route::delete('expense/delete/{id}', [ExpenseController::class, 'destroy']);
+
+Route::get('hr-mis-reports', [HrMisReportController::class, 'index']);
+Route::post('hr-mis-report/create', [HrMisReportController::class, 'store']);
+Route::get('hr-mis-report/{id}', [HrMisReportController::class, 'show']);
+Route::put('hr-mis-report/update/{id}', [HrMisReportController::class, 'update']);
+Route::delete('hr-mis-report/delete/{id}', [HrMisReportController::class, 'destroy']);
 
 Route::get('visitor-invites', [VisiterInviteController::class, 'index']);
 Route::post('visitor-invite/create', [VisiterInviteController::class, 'store']);
@@ -138,6 +145,7 @@ Route::post('employee/attendence/mark-in', [EmployeeAttendenceController::class,
 Route::post('employee/attendence/mark-out', [EmployeeAttendenceController::class, 'markOut']);
 Route::post('employee/attendence/break-start', [EmployeeAttendenceController::class, 'breakStart']);
 Route::post('employee/attendence/break-end', [EmployeeAttendenceController::class, 'breakEnd']);
+Route::get('employee/my-attendence', [EmployeeAttendenceController::class, 'myAttendance']);
 Route::get('employee/my-activities', [EmployeeActivityController::class, 'myActivities']);
 Route::get('employee/dashboard', [EmployeeDashboardController::class, 'dashboard']);
 Route::post('employee/leave/store', [EmployeeLeaveManageController::class, 'store']);
