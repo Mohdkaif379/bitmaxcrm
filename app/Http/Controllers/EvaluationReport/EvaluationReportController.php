@@ -9,6 +9,7 @@ use App\Models\EvaluationReport;
 use App\Models\Log;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
 
 class EvaluationReportController extends Controller
 {
@@ -99,7 +100,9 @@ class EvaluationReportController extends Controller
 
         $report = new EvaluationReport();
         $this->fillReport($report, $validated);
-        $report->created_by = $admin->id;
+        if ($this->evaluationReportsHasCreatedByColumn()) {
+            $report->created_by = $admin->id;
+        }
         $report->save();
 
         $this->logEvaluationReportAction($request, $admin, $report, 'create', 'created evaluation report for');
@@ -199,40 +202,40 @@ class EvaluationReportController extends Controller
 
     private function validatePayload(Request $request, bool $isUpdate = false): array
     {
-        $required = $isUpdate ? 'sometimes|required' : 'required';
+        $requiredRules = $isUpdate ? ['sometimes', 'required'] : ['required'];
 
         return $request->validate([
-            'employee_id' => [$required, 'integer', 'exists:employees,id'],
-            'period_to' => [$required, 'date'],
-            'period_from' => [$required, 'date', 'before_or_equal:period_to'],
-            'evaluation_date' => [$required, 'date'],
-            'delivery_updates' => [$required, 'string', 'max:255'],
-            'quality_standards' => [$required, 'string', 'max:255'],
-            'application_performance' => [$required, 'string', 'max:255'],
-            'completion_accuracy' => [$required, 'string', 'max:255'],
-            'innovation_problems' => [$required, 'string', 'max:255'],
-            'task_efficiency' => [$required, 'integer', 'min:0'],
-            'ui_ux_completion' => [$required, 'integer', 'min:0'],
-            'debug_testing' => [$required, 'integer', 'min:0'],
-            'version_control' => [$required, 'integer', 'min:0'],
-            'document_quality' => [$required, 'integer', 'min:0'],
-            'manager_comments' => [$required, 'string'],
-            'collaboration_teamwork' => [$required, 'string', 'max:255'],
-            'communicate_reports' => [$required, 'string', 'max:255'],
-            'attendence_punctuality' => [$required, 'string', 'max:255'],
-            'professionalism' => [$required, 'integer', 'min:0'],
-            'team_collaboration' => [$required, 'integer', 'min:0'],
-            'learning_adaptability' => [$required, 'integer', 'min:0'],
-            'initiate_ownership' => [$required, 'integer', 'min:0'],
-            'team_management' => [$required, 'integer', 'min:0'],
-            'hr_comments' => [$required, 'string'],
-            'skills' => [$required, 'integer', 'min:0'],
-            'task_delivery' => [$required, 'integer', 'min:0'],
-            'quality_work' => [$required, 'integer', 'min:0'],
-            'communication' => [$required, 'integer', 'min:0'],
-            'behaviour_teamwork' => [$required, 'integer', 'min:0'],
-            'performance_grade' => [$required, 'string', 'max:100'],
-            'final_feedback' => [$required, 'string'],
+            'employee_id' => array_merge($requiredRules, ['integer', 'exists:employees,id']),
+            'period_to' => array_merge($requiredRules, ['date']),
+            'period_from' => array_merge($requiredRules, ['date', 'before_or_equal:period_to']),
+            'evaluation_date' => array_merge($requiredRules, ['date']),
+            'delivery_updates' => array_merge($requiredRules, ['string', 'max:255']),
+            'quality_standards' => array_merge($requiredRules, ['string', 'max:255']),
+            'application_performance' => array_merge($requiredRules, ['string', 'max:255']),
+            'completion_accuracy' => array_merge($requiredRules, ['string', 'max:255']),
+            'innovation_problems' => array_merge($requiredRules, ['string', 'max:255']),
+            'task_efficiency' => array_merge($requiredRules, ['integer', 'min:0']),
+            'ui_ux_completion' => array_merge($requiredRules, ['integer', 'min:0']),
+            'debug_testing' => array_merge($requiredRules, ['integer', 'min:0']),
+            'version_control' => array_merge($requiredRules, ['integer', 'min:0']),
+            'document_quality' => array_merge($requiredRules, ['integer', 'min:0']),
+            'manager_comments' => array_merge($requiredRules, ['string']),
+            'collaboration_teamwork' => array_merge($requiredRules, ['string', 'max:255']),
+            'communicate_reports' => array_merge($requiredRules, ['string', 'max:255']),
+            'attendence_punctuality' => array_merge($requiredRules, ['string', 'max:255']),
+            'professionalism' => array_merge($requiredRules, ['integer', 'min:0']),
+            'team_collaboration' => array_merge($requiredRules, ['integer', 'min:0']),
+            'learning_adaptability' => array_merge($requiredRules, ['integer', 'min:0']),
+            'initiate_ownership' => array_merge($requiredRules, ['integer', 'min:0']),
+            'team_management' => array_merge($requiredRules, ['integer', 'min:0']),
+            'hr_comments' => array_merge($requiredRules, ['string']),
+            'skills' => array_merge($requiredRules, ['integer', 'min:0']),
+            'task_delivery' => array_merge($requiredRules, ['integer', 'min:0']),
+            'quality_work' => array_merge($requiredRules, ['integer', 'min:0']),
+            'communication' => array_merge($requiredRules, ['integer', 'min:0']),
+            'behaviour_teamwork' => array_merge($requiredRules, ['integer', 'min:0']),
+            'performance_grade' => array_merge($requiredRules, ['string', 'max:100']),
+            'final_feedback' => array_merge($requiredRules, ['string']),
         ]);
     }
 
@@ -441,5 +444,16 @@ class EvaluationReportController extends Controller
 
         $employee = Employee::find($employeeId);
         return $employee?->emp_name ?: 'unknown employee';
+    }
+
+    private function evaluationReportsHasCreatedByColumn(): bool
+    {
+        static $hasCreatedBy = null;
+
+        if ($hasCreatedBy === null) {
+            $hasCreatedBy = Schema::hasColumn('evaluation_reports', 'created_by');
+        }
+
+        return $hasCreatedBy;
     }
 }

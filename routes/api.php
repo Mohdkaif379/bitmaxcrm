@@ -13,12 +13,15 @@ use App\Http\Controllers\Employee\Employee\EmployeeDashboardController;
 use App\Http\Controllers\Employee\Employee\EmployeeLeaveManageController;
 use App\Http\Controllers\Employee\Employee\MyProfileController;
 use App\Http\Controllers\Employee\Employee\MyTaskController;
+use App\Http\Controllers\EvaluationReport\EvaluationReportController;
 use App\Http\Controllers\Expense\ExpenseController;
 use App\Http\Controllers\HrMisReport\HrMisReportController;
 use App\Http\Controllers\Leads\LeadController;
 use App\Http\Controllers\LeadInteraction\LeadInteractionController;
 use App\Http\Controllers\Leave\LeaveManageController;
+use App\Http\Controllers\Logs\LogsController;
 use App\Http\Controllers\Proposal\ProposalController;
+use App\Http\Controllers\ReportSubmission\ReportSubmissionController;
 use App\Http\Controllers\SalarySlip\SalarySlipController;
 use App\Http\Controllers\StockManagement\StockManagementController;
 use App\Http\Controllers\SubAdmin\SubAdminController;
@@ -135,6 +138,15 @@ Route::post('tour-conveyance-form/create', [TourConevyanceFormController::class,
 Route::get('tour-conveyance-form/{id}', [TourConevyanceFormController::class, 'show']);
 Route::put('tour-conveyance-form/update/{id}', [TourConevyanceFormController::class, 'update']);
 Route::delete('tour-conveyance-form/delete/{id}', [TourConevyanceFormController::class, 'destroy']);
+
+Route::get('evaluation-reports', [EvaluationReportController::class, 'index']);
+Route::post('evaluation-report/create', [EvaluationReportController::class, 'store']);
+Route::get('evaluation-report/{id}', [EvaluationReportController::class, 'show']);
+Route::put('evaluation-report/update/{id}', [EvaluationReportController::class, 'update']);
+Route::delete('evaluation-report/delete/{id}', [EvaluationReportController::class, 'destroy']);
+
+Route::get('report-submissions', [ReportSubmissionController::class, 'index']);
+Route::get('logs', [LogsController::class, 'index']);
 
 Route::post('employee/login', [EmployeeLoginController::class, 'login']);
 Route::post('employee/logout', [EmployeeLoginController::class, 'logout']);
