@@ -27,6 +27,7 @@ class InterviewController extends Controller
         $validated = $request->validate([
             'search' => ['nullable', 'string', 'max:255'],
             'status' => ['nullable', 'string', 'max:100'],
+            'result' => ['nullable', 'string', 'max:100'],
             'job_profile' => ['nullable', 'string', 'max:255'],
             'interview_date' => ['nullable', 'date'],
         ]);
@@ -35,6 +36,10 @@ class InterviewController extends Controller
 
         if (!empty($validated['status'])) {
             $query->where('status', $validated['status']);
+        }
+
+        if (!empty($validated['result'])) {
+            $query->where('result', $validated['result']);
         }
 
         if (!empty($validated['job_profile'])) {
@@ -54,6 +59,7 @@ class InterviewController extends Controller
                     ->orWhere('candidate_phone', 'like', '%' . $search . '%')
                     ->orWhere('location', 'like', '%' . $search . '%')
                     ->orWhere('status', 'like', '%' . $search . '%')
+                    ->orWhere('result', 'like', '%' . $search . '%')
                     ->orWhere('experience', 'like', '%' . $search . '%')
                     ->orWhere('final_feedback', 'like', '%' . $search . '%');
             });
@@ -222,6 +228,7 @@ class InterviewController extends Controller
             'interview_date' => array_merge($requiredRules, ['date']),
             'interview_time' => array_merge($requiredRules, ['date_format:H:i']),
             'status' => ['nullable', 'string', 'max:100'],
+            'result' => ['nullable', 'string', 'max:100'],
             'candidate_resume' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:10240'],
             'final_feedback' => ['nullable', 'string'],
             'round_details' => $isUpdate ? ['sometimes', 'array', 'min:1'] : ['required', 'array', 'min:1'],
@@ -244,6 +251,7 @@ class InterviewController extends Controller
             'interview_date',
             'interview_time',
             'status',
+            'result',
             'final_feedback',
         ];
 
@@ -251,6 +259,8 @@ class InterviewController extends Controller
             if (!$isUpdate || array_key_exists($field, $validated)) {
                 if ($field === 'status') {
                     $interview->{$field} = $validated[$field] ?? 'scheduled';
+                } elseif ($field === 'result') {
+                    $interview->{$field} = $validated[$field] ?? 'pending';
                 } else {
                     $interview->{$field} = $validated[$field] ?? null;
                 }

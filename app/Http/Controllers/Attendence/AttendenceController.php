@@ -7,8 +7,10 @@ use App\Models\Admin;
 use App\Models\Attendence;
 use App\Models\Employee;
 use App\Models\Log;
+use App\Models\OfficeIpSetting;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
@@ -79,6 +81,10 @@ class AttendenceController extends Controller
 
     public function markIn(Request $request)
     {
+        if ($ipRestrictionResponse = $this->ensureRequestFromSyncedOfficeIp($request)) {
+            return $ipRestrictionResponse;
+        }
+
         $validated = $request->validate([
             'employee_id' => ['required', 'integer', 'exists:employees,id'],
             'profile_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
@@ -120,6 +126,10 @@ class AttendenceController extends Controller
 
     public function markOut(Request $request)
     {
+        if ($ipRestrictionResponse = $this->ensureRequestFromSyncedOfficeIp($request)) {
+            return $ipRestrictionResponse;
+        }
+
         $validated = $request->validate([
             'employee_id' => ['required', 'integer', 'exists:employees,id'],
             'profile_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
@@ -168,6 +178,10 @@ class AttendenceController extends Controller
 
     public function breakStart(Request $request)
     {
+        if ($ipRestrictionResponse = $this->ensureRequestFromSyncedOfficeIp($request)) {
+            return $ipRestrictionResponse;
+        }
+
         $validated = $request->validate([
             'employee_id' => ['required', 'integer', 'exists:employees,id'],
             'profile_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
@@ -219,6 +233,10 @@ class AttendenceController extends Controller
 
     public function breakEnd(Request $request)
     {
+        if ($ipRestrictionResponse = $this->ensureRequestFromSyncedOfficeIp($request)) {
+            return $ipRestrictionResponse;
+        }
+
         $validated = $request->validate([
             'employee_id' => ['required', 'integer', 'exists:employees,id'],
             'profile_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
@@ -573,5 +591,33 @@ class AttendenceController extends Controller
 
         $employee = Employee::find($employeeId);
         return $employee?->emp_name ?: 'unknown employee';
+    }
+
+    private function ensureRequestFromSyncedOfficeIp(Request $request): ?JsonResponse
+    {
+        $syncedIp = OfficeIpSetting::query()
+            ->where('is_active', true)
+            ->latest('id')
+            ->value('ip_address');
+
+        if (empty($syncedIp)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Office IP is not synced yet. Please sync office IP first.',
+            ], 422);
+        }
+
+        if ($request->ip() !== $syncedIp) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Attendance can be marked only from synced office IP.',
+                'data' => [
+                    'request_ip' => $request->ip(),
+                    'synced_office_ip' => $syncedIp,
+                ],
+            ], 422);
+        }
+
+        return null;
     }
 }

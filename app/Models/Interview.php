@@ -18,6 +18,7 @@ class Interview extends Model
         'interview_date',
         'interview_time',
         'status',
+        'result',
         'candidate_resume',
         'final_feedback',
     ];

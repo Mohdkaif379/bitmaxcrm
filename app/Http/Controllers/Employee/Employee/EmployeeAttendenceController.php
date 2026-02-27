@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Attendence;
 use App\Models\Employee;
 use App\Models\Log;
+use App\Models\OfficeIpSetting;
 use App\Models\ReportSubmission;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
@@ -90,6 +92,10 @@ class EmployeeAttendenceController extends Controller
             ], 401);
         }
 
+        if ($ipRestrictionResponse = $this->ensureRequestFromSyncedOfficeIp($request)) {
+            return $ipRestrictionResponse;
+        }
+
         $request->validate([
             'profile_image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'report_status' => ['nullable', 'in:yes,no'],
@@ -133,6 +139,10 @@ class EmployeeAttendenceController extends Controller
                 'status' => false,
                 'message' => 'Unauthorized. Valid employee token is required.',
             ], 401);
+        }
+
+        if ($ipRestrictionResponse = $this->ensureRequestFromSyncedOfficeIp($request)) {
+            return $ipRestrictionResponse;
         }
 
         $request->validate([
@@ -196,6 +206,10 @@ class EmployeeAttendenceController extends Controller
             ], 401);
         }
 
+        if ($ipRestrictionResponse = $this->ensureRequestFromSyncedOfficeIp($request)) {
+            return $ipRestrictionResponse;
+        }
+
         $request->validate([
             'profile_image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ]);
@@ -248,6 +262,10 @@ class EmployeeAttendenceController extends Controller
                 'status' => false,
                 'message' => 'Unauthorized. Valid employee token is required.',
             ], 401);
+        }
+
+        if ($ipRestrictionResponse = $this->ensureRequestFromSyncedOfficeIp($request)) {
+            return $ipRestrictionResponse;
         }
 
         $request->validate([
@@ -420,5 +438,33 @@ class EmployeeAttendenceController extends Controller
         $log->ip_address = $request->ip();
         $log->user_agent = (string) $request->userAgent();
         $log->save();
+    }
+
+    private function ensureRequestFromSyncedOfficeIp(Request $request): ?JsonResponse
+    {
+        $syncedIp = OfficeIpSetting::query()
+            ->where('is_active', true)
+            ->latest('id')
+            ->value('ip_address');
+
+        if (empty($syncedIp)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Office IP is not synced yet. Please contact admin.',
+            ], 422);
+        }
+
+        if ($request->ip() !== $syncedIp) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Attendance can be marked only from synced office IP.',
+                'data' => [
+                    'request_ip' => $request->ip(),
+                    'synced_office_ip' => $syncedIp,
+                ],
+            ], 422);
+        }
+
+        return null;
     }
 }

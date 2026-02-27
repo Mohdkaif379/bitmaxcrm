@@ -27,6 +27,7 @@ use App\Http\Controllers\ReportSubmission\ReportSubmissionController;
 use App\Http\Controllers\SalarySlip\SalarySlipController;
 use App\Http\Controllers\StockManagement\StockManagementController;
 use App\Http\Controllers\SubAdmin\SubAdminController;
+use App\Http\Controllers\SyncOfficeIp\SyncOfficeIpController;
 use App\Http\Controllers\Task\TaskController;
 use App\Http\Controllers\TaskAssign\TaskAssignController;
 use App\Http\Controllers\TourConveyance\TourConevyanceFormController;
@@ -156,6 +157,8 @@ Route::delete('evaluation-report/delete/{id}', [EvaluationReportController::clas
 Route::get('report-submissions', [ReportSubmissionController::class, 'index']);
 Route::get('logs', [LogsController::class, 'index']);
 Route::get('monthly-attendence', [MonthlyAttendenceController::class, 'employeeMonthlyAttendance']);
+Route::post('sync-office-ip', [SyncOfficeIpController::class, 'sync']);
+Route::get('sync-office-ip/current', [SyncOfficeIpController::class, 'current']);
 
 Route::post('employee/login', [EmployeeLoginController::class, 'login']);
 Route::post('employee/logout', [EmployeeLoginController::class, 'logout']);
