@@ -14,6 +14,7 @@ use App\Http\Controllers\Employee\Employee\EmployeeDashboardController;
 use App\Http\Controllers\Employee\Employee\EmployeeLeaveManageController;
 use App\Http\Controllers\Employee\Employee\MyProfileController;
 use App\Http\Controllers\Employee\Employee\MyTaskController;
+use App\Http\Controllers\Email\EmailController;
 use App\Http\Controllers\EvaluationReport\EvaluationReportController;
 use App\Http\Controllers\Expense\ExpenseController;
 use App\Http\Controllers\HrMisReport\HrMisReportController;
@@ -38,6 +39,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::post('admin/login', [AdminController::class, 'login']);
+Route::post('contact-form/submit', [EmailController::class, 'sendContactForm']);
 Route::post('admin/logout', [AdminController::class, 'logout']);
 Route::get('admins', [AdminController::class, 'index']);
 Route::post('admin/create', [AdminController::class, 'store']);
