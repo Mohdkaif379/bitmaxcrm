@@ -20,6 +20,7 @@ use App\Http\Controllers\Leads\LeadController;
 use App\Http\Controllers\LeadInteraction\LeadInteractionController;
 use App\Http\Controllers\Leave\LeaveManageController;
 use App\Http\Controllers\Logs\LogsController;
+use App\Http\Controllers\MonthlyAttendnece\MonthlyAttendenceController;
 use App\Http\Controllers\Proposal\ProposalController;
 use App\Http\Controllers\ReportSubmission\ReportSubmissionController;
 use App\Http\Controllers\SalarySlip\SalarySlipController;
@@ -147,6 +148,7 @@ Route::delete('evaluation-report/delete/{id}', [EvaluationReportController::clas
 
 Route::get('report-submissions', [ReportSubmissionController::class, 'index']);
 Route::get('logs', [LogsController::class, 'index']);
+Route::get('monthly-attendence', [MonthlyAttendenceController::class, 'employeeMonthlyAttendance']);
 
 Route::post('employee/login', [EmployeeLoginController::class, 'login']);
 Route::post('employee/logout', [EmployeeLoginController::class, 'logout']);
