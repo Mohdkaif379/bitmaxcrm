@@ -22,6 +22,7 @@ use App\Http\Controllers\LeadInteraction\LeadInteractionController;
 use App\Http\Controllers\Leave\LeaveManageController;
 use App\Http\Controllers\Logs\LogsController;
 use App\Http\Controllers\MonthlyAttendnece\MonthlyAttendenceController;
+use App\Http\Controllers\Notification\NotificationController;
 use App\Http\Controllers\Proposal\ProposalController;
 use App\Http\Controllers\ReportSubmission\ReportSubmissionController;
 use App\Http\Controllers\SalarySlip\SalarySlipController;
@@ -157,6 +158,10 @@ Route::delete('evaluation-report/delete/{id}', [EvaluationReportController::clas
 Route::get('report-submissions', [ReportSubmissionController::class, 'index']);
 Route::get('logs', [LogsController::class, 'index']);
 Route::get('monthly-attendence', [MonthlyAttendenceController::class, 'employeeMonthlyAttendance']);
+Route::get('notifications', [NotificationController::class, 'index']);
+Route::put('notifications/read-all', [NotificationController::class, 'markAllRead']);
+Route::put('notification/read/{id}', [NotificationController::class, 'markSingleRead']);
+Route::delete('notification/delete/{id}', [NotificationController::class, 'destroy']);
 Route::post('sync-office-ip', [SyncOfficeIpController::class, 'sync']);
 Route::get('sync-office-ip/current', [SyncOfficeIpController::class, 'current']);
 
