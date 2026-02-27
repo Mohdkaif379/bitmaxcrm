@@ -7,6 +7,7 @@ use App\Models\Admin;
 use App\Models\Attendence;
 use App\Models\Employee;
 use App\Models\Log;
+use App\Models\Notification;
 use App\Models\OfficeIpSetting;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -116,6 +117,7 @@ class AttendenceController extends Controller
         $attendance->save();
 
         $this->logAttendanceAction($request, $attendance, 'mark_in', 'marked attendance in');
+        $this->createAttendanceNotification($request, $attendance, 'marked attendance');
 
         return response()->json([
             'status' => true,
@@ -168,6 +170,7 @@ class AttendenceController extends Controller
         $attendance->save();
 
         $this->logAttendanceAction($request, $attendance, 'mark_out', 'marked attendance out');
+        $this->createAttendanceNotification($request, $attendance, 'marked attendance');
 
         return response()->json([
             'status' => true,
@@ -619,5 +622,25 @@ class AttendenceController extends Controller
         }
 
         return null;
+    }
+
+    private function createAttendanceNotification(Request $request, Attendence $attendance, string $actionText): void
+    {
+        $adminId = $this->resolveAdminIdFromToken($request);
+        $adminName = $this->resolveAdminName($adminId);
+        $employeeName = $this->resolveEmployeeName($attendance->employee_id);
+
+        $notification = new Notification();
+        $notification->admin_id = $adminId;
+        $notification->employee_id = $attendance->employee_id;
+        $notification->title = 'Attendance marked';
+        $notification->message = sprintf(
+            'admin(%s) %s of this employee(%s)',
+            $adminName,
+            $actionText,
+            $employeeName
+        );
+        $notification->is_read = false;
+        $notification->save();
     }
 }

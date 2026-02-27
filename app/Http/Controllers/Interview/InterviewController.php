@@ -7,6 +7,7 @@ use App\Models\Admin;
 use App\Models\Interview;
 use App\Models\InterviewRound;
 use App\Models\Log;
+use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -105,6 +106,7 @@ class InterviewController extends Controller
         });
 
         $this->logInterviewAction($request, $admin, $interview, 'create', 'created interview for');
+        $this->createInterviewScheduledNotification($admin, $interview);
 
         return response()->json([
             'status' => true,
@@ -436,5 +438,23 @@ class InterviewController extends Controller
         $log->ip_address = $request->ip();
         $log->user_agent = (string) $request->userAgent();
         $log->save();
+    }
+
+    private function createInterviewScheduledNotification(Admin $admin, Interview $interview): void
+    {
+        $adminName = $admin->full_name ?: 'unknown admin';
+        $candidateName = $interview->candidate_name ?: 'unknown candidate';
+
+        $notification = new Notification();
+        $notification->admin_id = $admin->id;
+        $notification->employee_id = null;
+        $notification->title = 'Interview scheduled';
+        $notification->message = sprintf(
+            'admin(%s) scheduled interview for candidate(%s)',
+            $adminName,
+            $candidateName
+        );
+        $notification->is_read = false;
+        $notification->save();
     }
 }

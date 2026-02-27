@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\HrMisReport;
 use App\Models\Log;
+use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
@@ -97,6 +98,7 @@ class HrMisReportController extends Controller
         $report->created_by = $admin->id;
         $report->save();
         $this->logHrMisReportAction($request, $admin, $report, 'create', 'created HR MIS report');
+        $this->createHrMisReportNotification($admin, $report, 'create');
 
         return response()->json([
             'status' => true,
@@ -152,6 +154,7 @@ class HrMisReportController extends Controller
         $this->fillReportData($report, $validated);
         $report->save();
         $this->logHrMisReportAction($request, $admin, $report, 'update', 'updated HR MIS report');
+        $this->createHrMisReportNotification($admin, $report, 'update');
 
         return response()->json([
             'status' => true,
@@ -181,6 +184,7 @@ class HrMisReportController extends Controller
         $reportType = $report->report_type ?: 'unknown type';
         $report->delete();
         $this->logHrMisReportDeleteAction($request, $admin, $reportType);
+        $this->createHrMisReportDeleteNotification($admin, $reportType);
 
         return response()->json([
             'status' => true,
@@ -402,5 +406,46 @@ class HrMisReportController extends Controller
         $log->ip_address = $request->ip();
         $log->user_agent = (string) $request->userAgent();
         $log->save();
+    }
+
+    private function createHrMisReportNotification(Admin $admin, HrMisReport $report, string $action): void
+    {
+        $adminName = $admin->full_name ?: 'unknown admin';
+        $reportType = $report->report_type ?: 'unknown type';
+
+        $title = $action === 'update'
+            ? 'HR MIS report updated'
+            : 'HR MIS report created';
+        $messageAction = $action === 'update' ? 'updated' : 'created';
+
+        $notification = new Notification();
+        $notification->admin_id = $admin->id;
+        $notification->employee_id = null;
+        $notification->title = $title;
+        $notification->message = sprintf(
+            'admin(%s) %s HR MIS report (%s)',
+            $adminName,
+            $messageAction,
+            $reportType
+        );
+        $notification->is_read = false;
+        $notification->save();
+    }
+
+    private function createHrMisReportDeleteNotification(Admin $admin, string $reportType): void
+    {
+        $adminName = $admin->full_name ?: 'unknown admin';
+
+        $notification = new Notification();
+        $notification->admin_id = $admin->id;
+        $notification->employee_id = null;
+        $notification->title = 'HR MIS report deleted';
+        $notification->message = sprintf(
+            'admin(%s) deleted HR MIS report (%s)',
+            $adminName,
+            $reportType
+        );
+        $notification->is_read = false;
+        $notification->save();
     }
 }

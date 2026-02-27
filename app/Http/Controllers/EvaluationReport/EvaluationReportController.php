@@ -7,6 +7,7 @@ use App\Models\Admin;
 use App\Models\Employee;
 use App\Models\EvaluationReport;
 use App\Models\Log;
+use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
@@ -106,6 +107,7 @@ class EvaluationReportController extends Controller
         $report->save();
 
         $this->logEvaluationReportAction($request, $admin, $report, 'create', 'created evaluation report for');
+        $this->createEvaluationReportNotification($admin, $report, 'create');
 
         return response()->json([
             'status' => true,
@@ -162,6 +164,7 @@ class EvaluationReportController extends Controller
         $report->save();
 
         $this->logEvaluationReportAction($request, $admin, $report, 'update', 'updated evaluation report for');
+        $this->createEvaluationReportNotification($admin, $report, 'update');
 
         return response()->json([
             'status' => true,
@@ -193,6 +196,7 @@ class EvaluationReportController extends Controller
         $report->delete();
 
         $this->logEvaluationReportDeleteAction($request, $admin, $employeeId, $employeeName);
+        $this->createEvaluationReportDeleteNotification($admin, $employeeId, $employeeName);
 
         return response()->json([
             'status' => true,
@@ -455,5 +459,46 @@ class EvaluationReportController extends Controller
         }
 
         return $hasCreatedBy;
+    }
+
+    private function createEvaluationReportNotification(Admin $admin, EvaluationReport $report, string $action): void
+    {
+        $adminName = $admin->full_name ?: 'unknown admin';
+        $employeeName = $this->resolveEmployeeName($report->employee_id);
+
+        $title = $action === 'update'
+            ? 'Evaluation report updated'
+            : 'Evaluation report created';
+        $messageAction = $action === 'update' ? 'updated' : 'created';
+
+        $notification = new Notification();
+        $notification->admin_id = $admin->id;
+        $notification->employee_id = $report->employee_id;
+        $notification->title = $title;
+        $notification->message = sprintf(
+            'admin(%s) %s evaluation report of employee(%s)',
+            $adminName,
+            $messageAction,
+            $employeeName
+        );
+        $notification->is_read = false;
+        $notification->save();
+    }
+
+    private function createEvaluationReportDeleteNotification(Admin $admin, ?int $employeeId, string $employeeName): void
+    {
+        $adminName = $admin->full_name ?: 'unknown admin';
+
+        $notification = new Notification();
+        $notification->admin_id = $admin->id;
+        $notification->employee_id = $employeeId;
+        $notification->title = 'Evaluation report deleted';
+        $notification->message = sprintf(
+            'admin(%s) deleted evaluation report of employee(%s)',
+            $adminName,
+            $employeeName
+        );
+        $notification->is_read = false;
+        $notification->save();
     }
 }

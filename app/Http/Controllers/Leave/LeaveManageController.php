@@ -7,6 +7,7 @@ use App\Models\Admin;
 use App\Models\Employee;
 use App\Models\LeaveManagement;
 use App\Models\Log;
+use App\Models\Notification;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -70,6 +71,7 @@ class LeaveManageController extends Controller
         $leave->save();
         $leave->load(['employee', 'approvedBy']);
         $this->logLeaveAction($request, $admin, $leave, 'approve', 'updated leave request status for');
+        $this->createLeaveApprovalNotification($admin, $leave);
 
         return response()->json([
             'status' => true,
@@ -127,8 +129,11 @@ class LeaveManageController extends Controller
         }
 
         if (array_key_exists('status', $validated)) {
+            $previousStatus = $leave->status;
             $leave->status = $validated['status'];
             $leave->approved_by = in_array($validated['status'], ['approved', 'rejected'], true) ? $admin->id : null;
+        } else {
+            $previousStatus = $leave->status;
         }
 
         if ($request->hasFile('file')) {
@@ -142,6 +147,14 @@ class LeaveManageController extends Controller
         $leave->save();
         $leave->load(['employee', 'approvedBy']);
         $this->logLeaveAction($request, $admin, $leave, 'update', 'edited leave request for');
+
+        if (
+            array_key_exists('status', $validated)
+            && in_array($leave->status, ['approved', 'rejected'], true)
+            && $leave->status !== $previousStatus
+        ) {
+            $this->createLeaveApprovalNotification($admin, $leave);
+        }
 
         return response()->json([
             'status' => true,
@@ -354,5 +367,25 @@ class LeaveManageController extends Controller
 
         $employee = Employee::find($employeeId);
         return $employee?->emp_name ?: 'unknown employee';
+    }
+
+    private function createLeaveApprovalNotification(Admin $admin, LeaveManagement $leave): void
+    {
+        $adminName = $admin->full_name ?: 'unknown admin';
+        $employeeName = $this->resolveEmployeeName($leave->employee_id);
+        $statusText = $leave->status === 'rejected' ? 'rejected' : 'approved';
+
+        $notification = new Notification();
+        $notification->admin_id = $admin->id;
+        $notification->employee_id = $leave->employee_id;
+        $notification->title = $statusText === 'approved' ? 'Leave approved' : 'Leave rejected';
+        $notification->message = sprintf(
+            'admin(%s) %s leave request of employee(%s)',
+            $adminName,
+            $statusText,
+            $employeeName
+        );
+        $notification->is_read = false;
+        $notification->save();
     }
 }
