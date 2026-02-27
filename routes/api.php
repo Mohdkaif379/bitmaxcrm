@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\AdminDashboard\AdminDashboardController;
 use App\Http\Controllers\Activity\ActivityController;
 use App\Http\Controllers\AssignStock\AssignStockController;
 use App\Http\Controllers\ChangeAdminCredential\AdminCredentialController;
@@ -43,6 +44,9 @@ Route::post('admin/create', [AdminController::class, 'store']);
 Route::get('admin/profile', [AdminController::class, 'show']);
 Route::put('admin/profile', [AdminController::class, 'update']);
 Route::delete('admin/profile', [AdminController::class, 'destroy']);
+Route::get('admin/dashboard/recent-employees', [AdminDashboardController::class, 'recentEmployees']);
+Route::get('admin/dashboard/stats', [AdminDashboardController::class, 'dashboardStats']);
+Route::get('admin/dashboard/recent-leaves', [AdminDashboardController::class, 'recentLeaves']);
 Route::put('admin/password/update', [AdminCredentialController::class, 'updatePassword']);
 Route::get('sub-admins', [SubAdminController::class, 'index']);
 Route::post('sub-admin/create', [SubAdminController::class, 'store']);
