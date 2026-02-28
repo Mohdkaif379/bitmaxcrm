@@ -212,7 +212,7 @@ class AttendenceController extends Controller
         if ($attendance->break_start) {
             return response()->json([
                 'status' => false,
-                'message' => 'Break start already marked.',
+                'message' => 'Break start already.',
             ], 422);
         }
 
