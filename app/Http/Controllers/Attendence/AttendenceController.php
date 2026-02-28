@@ -437,7 +437,8 @@ class AttendenceController extends Controller
             return false;
         }
 
-        if (($payload['role'] ?? null) !== 'admin') {
+        $role = strtolower((string) ($payload['role'] ?? ''));
+        if (!in_array($role, ['admin', 'sub_admin', 'subadmin'], true)) {
             return false;
         }
 
@@ -564,7 +565,12 @@ class AttendenceController extends Controller
         }
 
         $payload = $this->decodeJwtToken($token);
-        if (!$payload || ($payload['role'] ?? null) !== 'admin') {
+        if (!$payload) {
+            return null;
+        }
+
+        $role = strtolower((string) ($payload['role'] ?? ''));
+        if (!in_array($role, ['admin', 'sub_admin', 'subadmin'], true)) {
             return null;
         }
 
