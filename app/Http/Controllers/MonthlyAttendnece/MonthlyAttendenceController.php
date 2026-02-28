@@ -82,7 +82,7 @@ class MonthlyAttendenceController extends Controller
     private function transformAttendance(Attendence $attendance): array
     {
         $data = $attendance->toArray();
-        $data['profile_image'] = $attendance->profile_image ? url(Storage::url($attendance->profile_image)) : null;
+        $data['profile_image'] = $attendance->profile_image ? $this->publicStorageUrl($attendance->profile_image) : null;
         $data['employee'] = $attendance->employee ? $this->transformEmployee($attendance->employee) : null;
 
         return $data;
@@ -92,9 +92,16 @@ class MonthlyAttendenceController extends Controller
     {
         $data = $employee->toArray();
         unset($data['password']);
-        $data['profile_photo'] = $employee->profile_photo ? url(Storage::url($employee->profile_photo)) : null;
+        $data['profile_photo'] = $employee->profile_photo ? $this->publicStorageUrl($employee->profile_photo) : null;
 
         return $data;
+    }
+
+    private function publicStorageUrl(string $relativePath): string
+    {
+        $clean = ltrim($relativePath, '/');
+        $base = rtrim((string) config('app.url', ''), '/');
+        return $base . '/public/storage/' . $clean;
     }
 
     private function authenticatedAdminOrSubAdminFromToken(Request $request): ?Admin
