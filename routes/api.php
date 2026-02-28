@@ -35,6 +35,7 @@ use App\Http\Controllers\Task\TaskController;
 use App\Http\Controllers\TaskAssign\TaskAssignController;
 use App\Http\Controllers\TourConveyance\TourConevyanceFormController;
 use App\Http\Controllers\VisitorInvited\VisiterInviteController;
+use App\Http\Controllers\ElasticSearch\ElasticSearchController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -138,6 +139,7 @@ Route::put('activity/update/{id}', [ActivityController::class, 'update']);
 Route::delete('activity/delete/{id}', [ActivityController::class, 'destroy']);
 
 Route::get('salary-slips', [SalarySlipController::class, 'index']);
+Route::get('search', [ElasticSearchController::class, 'search']);
 Route::post('salary-slip/create', [SalarySlipController::class, 'store']);
 Route::get('salary-slip/{id}', [SalarySlipController::class, 'show']);
 Route::put('salary-slip/update/{id}', [SalarySlipController::class, 'update']);
