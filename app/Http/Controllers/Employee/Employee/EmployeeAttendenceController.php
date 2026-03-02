@@ -315,7 +315,7 @@ class EmployeeAttendenceController extends Controller
     private function transformAttendance(Attendence $attendance): array
     {
         $data = $attendance->toArray();
-        $data['profile_image'] = $attendance->profile_image ? url(Storage::url($attendance->profile_image)) : null;
+        $data['profile_image'] = $attendance->profile_image ? url('public/storage/' . $attendance->profile_image) : null;
         $data['employee'] = $attendance->employee ? $this->transformEmployee($attendance->employee) : null;
 
         return $data;
@@ -325,7 +325,7 @@ class EmployeeAttendenceController extends Controller
     {
         $data = $employee->toArray();
         unset($data['password']);
-        $data['profile_photo'] = $employee->profile_photo ? url(Storage::url($employee->profile_photo)) : null;
+        $data['profile_photo'] = $employee->profile_photo ? url('public/storage/' . $employee->profile_photo) : null;
 
         return $data;
     }

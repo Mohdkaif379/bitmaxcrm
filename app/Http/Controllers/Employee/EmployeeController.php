@@ -152,6 +152,11 @@ class EmployeeController extends Controller
             ], 404);
         }
 
+        // Accept common aliases from clients/postman payloads.
+        if ($request->hasFile('profile_image') && !$request->hasFile('profile_photo')) {
+            $request->files->set('profile_photo', $request->file('profile_image'));
+        }
+
         $validated = $this->validateEmployee($request, $employee->id);
 
         $employee = DB::transaction(function () use ($request, $validated, $employee) {
@@ -690,7 +695,7 @@ class EmployeeController extends Controller
     {
         $data = $employee->toArray();
         unset($data['password']);
-        $data['profile_photo'] = $employee->profile_photo ? url(Storage::url($employee->profile_photo)) : null;
+        $data['profile_photo'] = $employee->profile_photo ? url('public/storage/' . $employee->profile_photo) : null;
 
         $data['family_details'] = $employee->familyDetails->map(function (EmployeeFamilyDetails $item) {
             return [
@@ -700,9 +705,9 @@ class EmployeeController extends Controller
                 'relationship' => $item->relationship,
                 'contact' => $item->contact,
                 'aadhar_number' => $item->aadhar_number,
-                'aadhar_profile' => $item->aadhar_profile ? url(Storage::url($item->aadhar_profile)) : null,
+                'aadhar_profile' => $item->aadhar_profile ? url('public/storage/' . $item->aadhar_profile) : null,
                 'pan_number' => $item->pan_number,
-                'pan_profile' => $item->pan_profile ? url(Storage::url($item->pan_profile)) : null,
+                'pan_profile' => $item->pan_profile ? url('public/storage/' . $item->pan_profile) : null,
                 'created_at' => $item->created_at,
                 'updated_at' => $item->updated_at,
             ];
@@ -718,7 +723,7 @@ class EmployeeController extends Controller
                 'id' => $item->id,
                 'employee_id' => $item->employee_id,
                 'document_type' => $item->document_type,
-                'file' => $item->file ? url(Storage::url($item->file)) : null,
+                'file' => $item->file ? url('public/storage/' . $item->file) : null,
                 'created_at' => $item->created_at,
                 'updated_at' => $item->updated_at,
             ];
