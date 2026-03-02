@@ -402,6 +402,10 @@ class EvaluationReportController extends Controller
         string $action,
         string $actionText
     ): void {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
         $employeeName = $this->resolveEmployeeName($report->employee_id);
 
@@ -423,6 +427,10 @@ class EvaluationReportController extends Controller
 
     private function logEvaluationReportDeleteAction(Request $request, Admin $admin, ?int $employeeId, string $employeeName): void
     {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
 
         $log = new Log();
@@ -463,6 +471,10 @@ class EvaluationReportController extends Controller
 
     private function createEvaluationReportNotification(Admin $admin, EvaluationReport $report, string $action): void
     {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
         $employeeName = $this->resolveEmployeeName($report->employee_id);
 
@@ -487,6 +499,10 @@ class EvaluationReportController extends Controller
 
     private function createEvaluationReportDeleteNotification(Admin $admin, ?int $employeeId, string $employeeName): void
     {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
 
         $notification = new Notification();

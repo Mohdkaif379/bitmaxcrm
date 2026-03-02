@@ -428,6 +428,10 @@ class TourConevyanceFormController extends Controller
         string $action,
         string $actionText
     ): void {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
         $employeeName = $form->employee_name ?: 'unknown employee';
         $resolvedEmployeeId = $this->resolveEmployeeIdFromForm($form);
@@ -454,6 +458,10 @@ class TourConevyanceFormController extends Controller
         ?int $employeeId,
         string $employeeName
     ): void {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
 
         $log = new Log();

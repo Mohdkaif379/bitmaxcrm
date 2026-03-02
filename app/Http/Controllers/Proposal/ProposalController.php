@@ -330,6 +330,10 @@ class ProposalController extends Controller
         string $action,
         string $actionText
     ): void {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
         $leadName = $this->resolveLeadName($proposal->lead_id);
 
@@ -351,6 +355,10 @@ class ProposalController extends Controller
 
     private function logProposalDeleteAction(Request $request, Admin $admin, string $leadName): void
     {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
 
         $log = new Log();

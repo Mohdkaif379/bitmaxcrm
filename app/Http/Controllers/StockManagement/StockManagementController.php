@@ -290,6 +290,10 @@ class StockManagementController extends Controller
         string $action,
         string $actionText
     ): void {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
         $itemName = $stock->item_name ?: 'unknown item';
 
@@ -311,6 +315,10 @@ class StockManagementController extends Controller
 
     private function logStockDeleteAction(Request $request, Admin $admin, string $itemName): void
     {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
 
         $log = new Log();

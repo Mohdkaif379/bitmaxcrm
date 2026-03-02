@@ -484,6 +484,10 @@ class ActivityController extends Controller
         string $action,
         string $actionText
     ): void {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
         $employeeNames = $this->resolveActivityEmployeeNames($activity);
 
@@ -505,6 +509,10 @@ class ActivityController extends Controller
 
     private function logActivityDeleteAction(Request $request, Admin $admin, string $employeeNames): void
     {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
 
         $log = new Log();

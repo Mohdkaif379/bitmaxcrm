@@ -524,6 +524,12 @@ class AttendenceController extends Controller
     private function logAttendanceAction(Request $request, Attendence $attendance, string $action, string $actionText): void
     {
         $adminId = $this->resolveAdminIdFromToken($request);
+        if ($adminId) {
+            $admin = Admin::find($adminId);
+            if ($admin && $admin->role === 'admin') {
+                return;
+            }
+        }
         $adminName = $this->resolveAdminName($adminId);
         $employeeName = $this->resolveEmployeeName($attendance->employee_id);
 
@@ -546,6 +552,12 @@ class AttendenceController extends Controller
     private function logAttendanceDeleteAction(Request $request, ?int $employeeId): void
     {
         $adminId = $this->resolveAdminIdFromToken($request);
+        if ($adminId) {
+            $admin = Admin::find($adminId);
+            if ($admin && $admin->role === 'admin') {
+                return;
+            }
+        }
         $adminName = $this->resolveAdminName($adminId);
         $employeeName = $this->resolveEmployeeName($employeeId);
 
@@ -640,6 +652,12 @@ class AttendenceController extends Controller
     private function createAttendanceNotification(Request $request, Attendence $attendance, string $actionText): void
     {
         $adminId = $this->resolveAdminIdFromToken($request);
+        if ($adminId) {
+            $admin = Admin::find($adminId);
+            if ($admin && $admin->role === 'admin') {
+                return;
+            }
+        }
         $adminName = $this->resolveAdminName($adminId);
         $employeeName = $this->resolveEmployeeName($attendance->employee_id);
 

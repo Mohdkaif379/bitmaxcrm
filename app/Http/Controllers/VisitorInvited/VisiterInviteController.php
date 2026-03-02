@@ -287,6 +287,10 @@ class VisiterInviteController extends Controller
         string $action,
         string $actionText
     ): void {
+        if ($admin && $admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin?->full_name ?: 'unknown admin';
         $visitorName = $visitor->name ?: 'unknown visitor';
 
@@ -308,6 +312,10 @@ class VisiterInviteController extends Controller
 
     private function logVisitorDeleteAction(Request $request, ?Admin $admin, string $visitorName): void
     {
+        if ($admin && $admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin?->full_name ?: 'unknown admin';
 
         $log = new Log();

@@ -370,6 +370,10 @@ class HrMisReportController extends Controller
         string $action,
         string $actionText
     ): void {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
         $reportType = $report->report_type ?: 'unknown type';
 
@@ -391,6 +395,10 @@ class HrMisReportController extends Controller
 
     private function logHrMisReportDeleteAction(Request $request, Admin $admin, string $reportType): void
     {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
 
         $log = new Log();
@@ -410,6 +418,10 @@ class HrMisReportController extends Controller
 
     private function createHrMisReportNotification(Admin $admin, HrMisReport $report, string $action): void
     {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
         $reportType = $report->report_type ?: 'unknown type';
 
@@ -434,6 +446,10 @@ class HrMisReportController extends Controller
 
     private function createHrMisReportDeleteNotification(Admin $admin, string $reportType): void
     {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
 
         $notification = new Notification();

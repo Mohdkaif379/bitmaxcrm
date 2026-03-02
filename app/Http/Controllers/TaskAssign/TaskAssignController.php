@@ -338,6 +338,10 @@ class TaskAssignController extends Controller
         string $action,
         string $actionText
     ): void {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
         $employeeName = $this->resolveEmployeeName($assignment->employee_id);
         $taskName = $this->resolveTaskName($assignment->task_id);
@@ -366,6 +370,10 @@ class TaskAssignController extends Controller
         string $employeeName,
         string $taskName
     ): void {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
 
         $log = new Log();

@@ -317,6 +317,10 @@ class TaskController extends Controller
         string $action,
         string $actionText
     ): void {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
         $taskName = $task->task_name ?: 'unknown task';
 
@@ -338,6 +342,10 @@ class TaskController extends Controller
 
     private function logTaskDeleteAction(Request $request, Admin $admin, string $taskName): void
     {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
 
         $log = new Log();

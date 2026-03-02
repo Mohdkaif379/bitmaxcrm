@@ -162,6 +162,10 @@ class SyncOfficeIpController extends Controller
 
     private function logSyncOfficeIpAction(Request $request, Admin $admin, string $ipAddress): void
     {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
 
         $log = new Log();

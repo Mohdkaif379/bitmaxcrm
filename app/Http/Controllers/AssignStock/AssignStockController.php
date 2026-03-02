@@ -456,6 +456,10 @@ class AssignStockController extends Controller
         string $action,
         string $actionText
     ): void {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
         $employeeName = $this->resolveEmployeeName($assignment->employee_id);
 
@@ -481,6 +485,9 @@ class AssignStockController extends Controller
         ?int $employeeId,
         string $employeeName
     ): void {
+        if ($admin->role === 'admin') {
+            return;
+        }
         $adminName = $admin->full_name ?: 'unknown admin';
 
         $log = new Log();

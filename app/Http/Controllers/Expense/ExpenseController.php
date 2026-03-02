@@ -324,6 +324,10 @@ class ExpenseController extends Controller
         string $action,
         string $actionText
     ): void {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
         $expenseTitle = $expense->title ?: 'unknown expense';
 
@@ -345,6 +349,10 @@ class ExpenseController extends Controller
 
     private function logExpenseDeleteAction(Request $request, Admin $admin, string $expenseTitle): void
     {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
 
         $log = new Log();

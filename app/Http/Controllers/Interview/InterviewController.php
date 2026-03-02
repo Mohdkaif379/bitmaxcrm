@@ -402,6 +402,10 @@ class InterviewController extends Controller
         string $action,
         string $actionText
     ): void {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
         $candidateName = $interview->candidate_name ?: 'unknown candidate';
 
@@ -423,6 +427,10 @@ class InterviewController extends Controller
 
     private function logInterviewDeleteAction(Request $request, Admin $admin, string $candidateName): void
     {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
 
         $log = new Log();
@@ -442,6 +450,10 @@ class InterviewController extends Controller
 
     private function createInterviewScheduledNotification(Admin $admin, Interview $interview): void
     {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
         $candidateName = $interview->candidate_name ?: 'unknown candidate';
 

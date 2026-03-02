@@ -616,6 +616,10 @@ class SalarySlipController extends Controller
         string $action,
         string $actionText
     ): void {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
         $employeeName = $this->resolveEmployeeName($salarySlip->employee_id);
 
@@ -637,6 +641,10 @@ class SalarySlipController extends Controller
 
     private function logSalarySlipDeleteAction(Request $request, Admin $admin, ?int $employeeId, string $employeeName): void
     {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
 
         $log = new Log();

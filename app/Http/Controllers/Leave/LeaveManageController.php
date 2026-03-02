@@ -321,6 +321,10 @@ class LeaveManageController extends Controller
         string $action,
         string $actionText
     ): void {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
         $employeeName = $this->resolveEmployeeName($leave->employee_id);
 
@@ -342,6 +346,10 @@ class LeaveManageController extends Controller
 
     private function logLeaveDeleteAction(Request $request, Admin $admin, ?int $employeeId, string $employeeName): void
     {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
 
         $log = new Log();
@@ -371,6 +379,10 @@ class LeaveManageController extends Controller
 
     private function createLeaveApprovalNotification(Admin $admin, LeaveManagement $leave): void
     {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
         $employeeName = $this->resolveEmployeeName($leave->employee_id);
         $statusText = $leave->status === 'rejected' ? 'rejected' : 'approved';

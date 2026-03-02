@@ -313,6 +313,10 @@ class LeadController extends Controller
         string $action,
         string $actionText
     ): void {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
         $leadName = $lead->name ?: 'unknown lead';
 
@@ -334,6 +338,10 @@ class LeadController extends Controller
 
     private function logLeadDeleteAction(Request $request, Admin $admin, string $leadName): void
     {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
 
         $log = new Log();

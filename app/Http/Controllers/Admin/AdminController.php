@@ -476,6 +476,10 @@ class AdminController extends Controller
         string $action,
         string $actionText
     ): void {
+        if ($actorAdmin && $actorAdmin->role === 'admin') {
+            return;
+        }
+
         $actorName = $actorAdmin?->full_name ?: 'unknown admin';
         $targetName = $targetAdmin?->full_name ?: 'unknown admin';
 
@@ -500,6 +504,10 @@ class AdminController extends Controller
         Admin $actorAdmin,
         string $targetAdminName
     ): void {
+        if ($actorAdmin->role === 'admin') {
+            return;
+        }
+
         $actorName = $actorAdmin->full_name ?: 'unknown admin';
 
         $log = new Log();

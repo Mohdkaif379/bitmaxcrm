@@ -842,6 +842,10 @@ class EmployeeController extends Controller
     {
         /** @var Admin|null $admin */
         $admin = $request->attributes->get('auth_admin');
+        if ($admin && $admin->role === 'admin') {
+            return;
+        }
+
         $adminId = $admin?->id;
         $adminName = $admin?->full_name ?: 'unknown admin';
         $employeeName = $employee->emp_name ?: 'unknown employee';
@@ -866,6 +870,10 @@ class EmployeeController extends Controller
     {
         /** @var Admin|null $admin */
         $admin = $request->attributes->get('auth_admin');
+        if ($admin && $admin->role === 'admin') {
+            return;
+        }
+
         $adminId = $admin?->id;
         $adminName = $admin?->full_name ?: 'unknown admin';
 

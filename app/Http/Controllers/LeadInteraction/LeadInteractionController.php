@@ -324,6 +324,10 @@ class LeadInteractionController extends Controller
         string $action,
         string $actionText
     ): void {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
         $leadName = $this->resolveLeadName($interaction->lead_id);
 
@@ -345,6 +349,10 @@ class LeadInteractionController extends Controller
 
     private function logLeadInteractionDeleteAction(Request $request, Admin $admin, string $leadName): void
     {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
 
         $log = new Log();

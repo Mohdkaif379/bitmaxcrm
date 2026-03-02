@@ -141,6 +141,10 @@ class AdminCredentialController extends Controller
 
     private function logCredentialAction(Request $request, Admin $admin, string $action, string $actionText): void
     {
+        if ($admin->role === 'admin') {
+            return;
+        }
+
         $adminName = $admin->full_name ?: 'unknown admin';
 
         $log = new Log();
