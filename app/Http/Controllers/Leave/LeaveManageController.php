@@ -202,13 +202,13 @@ class LeaveManageController extends Controller
     private function transformLeave(LeaveManagement $leave): array
     {
         $data = $leave->toArray();
-        $data['file'] = $leave->file ? url(Storage::url($leave->file)) : null;
+        $data['file'] = $leave->file ? $this->publicStorageUrl($leave->file) : null;
 
         if ($leave->employee) {
             $employeeData = $leave->employee->toArray();
             unset($employeeData['password']);
             $employeeData['profile_photo'] = $leave->employee->profile_photo
-                ? url(Storage::url($leave->employee->profile_photo))
+                ? $this->publicStorageUrl($leave->employee->profile_photo)
                 : null;
             $data['employee'] = $employeeData;
         } else {
@@ -224,6 +224,12 @@ class LeaveManageController extends Controller
         }
 
         return $data;
+    }
+
+    private function publicStorageUrl(string $path): string
+    {
+        $storagePath = ltrim(Storage::url($path), '/');
+        return url('public/' . $storagePath);
     }
 
     private function authenticatedAdminFromToken(Request $request): ?Admin
