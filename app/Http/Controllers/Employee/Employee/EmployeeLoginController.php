@@ -29,6 +29,13 @@ class EmployeeLoginController extends Controller
             ], 401);
         }
 
+        if (strtolower((string) $employee->status) === 'inactive') {
+            return response()->json([
+                'status' => false,
+                'message' => 'Your account is inactive. Please contact admin.',
+            ], 403);
+        }
+
         $token = $this->createJwtToken($employee);
         $this->logEmployeeAuthAction($request, $employee, 'login', 'logged in');
 
