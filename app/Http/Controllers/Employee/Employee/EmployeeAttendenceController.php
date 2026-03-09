@@ -116,7 +116,9 @@ class EmployeeAttendenceController extends Controller
             ], 422);
         }
 
-        $attendance->mark_in = $now->format('H:i:s');
+        $markInTime = $now->format('H:i:s');
+        $attendance->mark_in = $markInTime;
+        $attendance->first_mark_in ??= $markInTime;
         $attendance->status = $attendance->mark_in <= '09:31:00' ? 'present' : 'halfday';
         $attendance->ip_address = $request->ip();
         $attendance->profile_image = $request->file('profile_image')->store('attendence/mark_in', 'public');
@@ -168,7 +170,9 @@ class EmployeeAttendenceController extends Controller
             ], 422);
         }
 
-        $attendance->mark_out = now('Asia/Kolkata')->format('H:i:s');
+        $markOutTime = now('Asia/Kolkata')->format('H:i:s');
+        $attendance->mark_out = $markOutTime;
+        $attendance->first_mark_out ??= $markOutTime;
         $attendance->status = ($attendance->mark_in <= '09:31:00' && $attendance->mark_out >= '18:30:00')
             ? 'present'
             : 'halfday';
@@ -240,7 +244,9 @@ class EmployeeAttendenceController extends Controller
             ], 422);
         }
 
-        $attendance->break_start = now('Asia/Kolkata')->format('H:i:s');
+        $breakStartTime = now('Asia/Kolkata')->format('H:i:s');
+        $attendance->break_start = $breakStartTime;
+        $attendance->first_break_start ??= $breakStartTime;
         $attendance->ip_address = $request->ip();
         $attendance->profile_image = $request->file('profile_image')->store('attendence/break_start', 'public');
         $attendance->save();
@@ -298,7 +304,9 @@ class EmployeeAttendenceController extends Controller
             ], 422);
         }
 
-        $attendance->break_end = now('Asia/Kolkata')->format('H:i:s');
+        $breakEndTime = now('Asia/Kolkata')->format('H:i:s');
+        $attendance->break_end = $breakEndTime;
+        $attendance->first_break_end ??= $breakEndTime;
         $attendance->ip_address = $request->ip();
         $attendance->profile_image = $request->file('profile_image')->store('attendence/break_end', 'public');
         $attendance->save();
@@ -315,6 +323,12 @@ class EmployeeAttendenceController extends Controller
     private function transformAttendance(Attendence $attendance): array
     {
         $data = $attendance->toArray();
+        $data['marked_at'] = [
+            'mark_in' => $attendance->first_mark_in ?? $attendance->mark_in,
+            'start_break' => $attendance->first_break_start ?? $attendance->break_start,
+            'break_out' => $attendance->first_break_end ?? $attendance->break_end,
+            'mark_out' => $attendance->first_mark_out ?? $attendance->mark_out,
+        ];
         $data['profile_image'] = $attendance->profile_image ? url('public/storage/' . $attendance->profile_image) : null;
         $data['employee'] = $attendance->employee ? $this->transformEmployee($attendance->employee) : null;
 

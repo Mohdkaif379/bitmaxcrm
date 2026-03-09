@@ -106,7 +106,9 @@ class AttendenceController extends Controller
             ], 422);
         }
 
-        $attendance->mark_in = $now->format('H:i:s');
+        $markInTime = $now->format('H:i:s');
+        $attendance->mark_in = $markInTime;
+        $attendance->first_mark_in ??= $markInTime;
         $attendance->status = $attendance->mark_in <= '09:31:00' ? 'present' : 'halfday';
         $attendance->ip_address = $request->ip();
 
@@ -156,7 +158,9 @@ class AttendenceController extends Controller
             ], 422);
         }
 
-        $attendance->mark_out = now('Asia/Kolkata')->format('H:i:s');
+        $markOutTime = now('Asia/Kolkata')->format('H:i:s');
+        $attendance->mark_out = $markOutTime;
+        $attendance->first_mark_out ??= $markOutTime;
 
         $markInOnTime = $attendance->mark_in <= '09:31:00';
         $markOutOnTime = $attendance->mark_out >= '18:30:00';
@@ -216,7 +220,9 @@ class AttendenceController extends Controller
             ], 422);
         }
 
-        $attendance->break_start = now('Asia/Kolkata')->format('H:i:s');
+        $breakStartTime = now('Asia/Kolkata')->format('H:i:s');
+        $attendance->break_start = $breakStartTime;
+        $attendance->first_break_start ??= $breakStartTime;
         $attendance->ip_address = $request->ip();
 
         if ($request->hasFile('profile_image')) {
@@ -271,7 +277,9 @@ class AttendenceController extends Controller
             ], 422);
         }
 
-        $attendance->break_end = now('Asia/Kolkata')->format('H:i:s');
+        $breakEndTime = now('Asia/Kolkata')->format('H:i:s');
+        $attendance->break_end = $breakEndTime;
+        $attendance->first_break_end ??= $breakEndTime;
         $attendance->ip_address = $request->ip();
 
         if ($request->hasFile('profile_image')) {
@@ -397,6 +405,12 @@ class AttendenceController extends Controller
     private function transformAttendance(Attendence $attendance): array
     {
         $data = $attendance->toArray();
+        $data['marked_at'] = [
+            'mark_in' => $attendance->first_mark_in ?? $attendance->mark_in,
+            'start_break' => $attendance->first_break_start ?? $attendance->break_start,
+            'break_out' => $attendance->first_break_end ?? $attendance->break_end,
+            'mark_out' => $attendance->first_mark_out ?? $attendance->mark_out,
+        ];
         $data['profile_image'] = $attendance->profile_image ? $this->publicStorageUrl($attendance->profile_image) : null;
         $data['employee'] = $attendance->employee ? $this->transformEmployee($attendance->employee) : null;
 
