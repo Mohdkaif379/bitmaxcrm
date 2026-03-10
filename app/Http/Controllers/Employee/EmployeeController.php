@@ -55,7 +55,7 @@ class EmployeeController extends Controller
 
         $employee = DB::transaction(function () use ($request, $validated) {
             $employee = new Employee();
-            $employee->emp_code = $validated['emp_code'];
+            $employee->emp_code = $this->generateEmployeeCode($validated['joining_date'] ?? null);
             $employee->emp_name = $validated['emp_name'];
             $employee->emp_email = $validated['emp_email'];
             $employee->emp_phone = $validated['emp_phone'] ?? null;
@@ -160,10 +160,6 @@ class EmployeeController extends Controller
         $validated = $this->validateEmployee($request, $employee->id);
 
         $employee = DB::transaction(function () use ($request, $validated, $employee) {
-            if (array_key_exists('emp_code', $validated)) {
-                $employee->emp_code = $validated['emp_code'];
-            }
-
             if (array_key_exists('emp_name', $validated)) {
                 $employee->emp_name = $validated['emp_name'];
             }
@@ -300,7 +296,7 @@ class EmployeeController extends Controller
         $required = $employeeId ? 'sometimes' : 'required';
 
         return $request->validate([
-            'emp_code' => [$required, 'string', 'max:255', Rule::unique('employees', 'emp_code')->ignore($employeeId)],
+            'emp_code' => ['sometimes', 'string', 'max:255', Rule::unique('employees', 'emp_code')->ignore($employeeId)],
             'emp_name' => [$required, 'string', 'max:255'],
             'emp_email' => [$required, 'email', 'max:255', Rule::unique('employees', 'emp_email')->ignore($employeeId)],
             'emp_phone' => ['nullable', 'string', 'max:20'],
@@ -365,6 +361,26 @@ class EmployeeController extends Controller
             'experiences.*.start_date' => ['nullable', 'date'],
             'experiences.*.end_date' => ['nullable', 'date'],
         ]);
+    }
+
+    private function generateEmployeeCode(?string $joiningDate = null): string
+    {
+        $yearSuffix = $joiningDate
+            ? date('y', strtotime($joiningDate))
+            : now('Asia/Kolkata')->format('y');
+
+        $maxSequence = Employee::query()
+            ->where('emp_code', 'like', 'BT/%/' . $yearSuffix)
+            ->pluck('emp_code')
+            ->reduce(function (int $carry, ?string $code) use ($yearSuffix): int {
+                if (!$code || !preg_match('/^BT\/(\d+)\/' . preg_quote($yearSuffix, '/') . '$/', $code, $matches)) {
+                    return $carry;
+                }
+
+                return max($carry, (int) $matches[1]);
+            }, 1085);
+
+        return sprintf('BT/%d/%s', $maxSequence + 1, $yearSuffix);
     }
 
     private function syncFamilyDetails(Request $request, Employee $employee): void
