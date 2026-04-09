@@ -19,6 +19,7 @@ use App\Http\Controllers\EvaluationReport\EvaluationReportController;
 use App\Http\Controllers\Expense\ExpenseController;
 use App\Http\Controllers\HrMisReport\HrMisReportController;
 use App\Http\Controllers\Interview\InterviewController;
+use App\Http\Controllers\Interview\CandidateInterviewController;
 use App\Http\Controllers\Leads\LeadController;
 use App\Http\Controllers\LeadInteraction\LeadInteractionController;
 use App\Http\Controllers\Leave\LeaveManageController;
@@ -156,6 +157,12 @@ Route::post('interview/create', [InterviewController::class, 'store']);
 Route::get('interview/{id}', [InterviewController::class, 'show']);
 Route::put('interview/update/{id}', [InterviewController::class, 'update']);
 Route::delete('interview/delete/{id}', [InterviewController::class, 'destroy']);
+
+Route::get('candidate-infos', [CandidateInterviewController::class, 'index']);
+Route::post('candidate-info/create', [CandidateInterviewController::class, 'store']);
+Route::get('candidate-info/{id}', [CandidateInterviewController::class, 'show']);
+Route::put('candidate-info/update/{id}', [CandidateInterviewController::class, 'update']);
+Route::delete('candidate-info/delete/{id}', [CandidateInterviewController::class, 'destroy']);
 
 Route::get('evaluation-reports', [EvaluationReportController::class, 'index']);
 Route::post('evaluation-report/create', [EvaluationReportController::class, 'store']);
