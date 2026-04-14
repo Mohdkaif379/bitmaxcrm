@@ -66,21 +66,32 @@ class MyProfileController extends Controller
             $request->files->set('profile_photo', $request->file('profile_image'));
         }
 
+        $hasDocuments   = $request->has('documents') && is_array($request->input('documents'));
+        $hasDeleteDocs  = $request->has('delete_document_ids') && is_array($request->input('delete_document_ids'));
+
         if (
             !$request->has('emp_name')
             && !$request->has('password')
             && !$request->hasFile('profile_photo')
+            && !$hasDocuments
+            && !$hasDeleteDocs
         ) {
             return response()->json([
                 'status' => false,
-                'message' => 'At least one field is required: emp_name, password, or profile_photo.',
+                'message' => 'At least one field is required: emp_name, password, profile_photo, documents, or delete_document_ids.',
             ], 422);
         }
 
         $validated = $request->validate([
-            'emp_name' => ['sometimes', 'required', 'string', 'max:255'],
-            'password' => ['sometimes', 'required', 'string', 'min:6', 'confirmed'],
-            'profile_photo' => ['sometimes', 'required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'emp_name'                    => ['sometimes', 'required', 'string', 'max:255'],
+            'password'                    => ['sometimes', 'required', 'string', 'min:6', 'confirmed'],
+            'profile_photo'               => ['sometimes', 'required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'documents'                   => ['sometimes', 'array'],
+            'documents.*.id'              => ['sometimes', 'nullable', 'integer', 'exists:employee_documents,id'],
+            'documents.*.document_type'   => ['required_with:documents', 'string', 'max:255'],
+            'documents.*.file'            => ['sometimes', 'nullable', 'file', 'mimes:jpg,jpeg,png,pdf,webp', 'max:5120'],
+            'delete_document_ids'         => ['sometimes', 'array'],
+            'delete_document_ids.*'       => ['integer', 'exists:employee_documents,id'],
         ]);
 
         if (array_key_exists('emp_name', $validated)) {
@@ -100,6 +111,62 @@ class MyProfileController extends Controller
         }
 
         $employee->save();
+
+        // ── Delete documents ───────────────────────────────────────────────────
+        if ($hasDeleteDocs) {
+            $docsToDelete = EmployeeDocuments::where('employee_id', $employee->id)
+                ->whereIn('id', $request->input('delete_document_ids'))
+                ->get();
+
+            foreach ($docsToDelete as $doc) {
+                if ($doc->file && Storage::disk('public')->exists($doc->file)) {
+                    Storage::disk('public')->delete($doc->file);
+                }
+                $doc->delete();
+            }
+        }
+
+        // ── Add / update documents ─────────────────────────────────────────────
+        if ($hasDocuments) {
+            foreach ($request->input('documents') as $index => $docData) {
+                $docId   = $docData['id'] ?? null;
+                $docType = $docData['document_type'] ?? null;
+
+                // Check if a new file was uploaded for this document index
+                $uploadedFile = $request->file("documents.{$index}.file") ?? null;
+
+                if ($docId) {
+                    // Update existing document (must belong to this employee)
+                    $doc = EmployeeDocuments::where('id', $docId)
+                        ->where('employee_id', $employee->id)
+                        ->first();
+
+                    if ($doc) {
+                        if ($docType) {
+                            $doc->document_type = $docType;
+                        }
+                        if ($uploadedFile) {
+                            // Delete old file
+                            if ($doc->file && Storage::disk('public')->exists($doc->file)) {
+                                Storage::disk('public')->delete($doc->file);
+                            }
+                            $doc->file = $uploadedFile->store('employees/documents', 'public');
+                        }
+                        $doc->save();
+                    }
+                } else {
+                    // Create new document
+                    if ($docType && $uploadedFile) {
+                        EmployeeDocuments::create([
+                            'employee_id'   => $employee->id,
+                            'document_type' => $docType,
+                            'file'          => $uploadedFile->store('employees/documents', 'public'),
+                        ]);
+                    }
+                }
+            }
+        }
+
         $employee->load([
             'familyDetails',
             'bankDetails',
