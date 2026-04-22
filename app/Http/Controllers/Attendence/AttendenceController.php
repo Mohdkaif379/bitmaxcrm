@@ -41,7 +41,7 @@ class AttendenceController extends Controller
 
         $attendances = $query->latest()->paginate(10);
         $attendances->getCollection()->transform(
-            fn (Attendence $attendance) => $this->transformAttendance($attendance)
+            fn(Attendence $attendance) => $this->transformAttendance($attendance)
         );
 
         return response()->json([
@@ -76,7 +76,7 @@ class AttendenceController extends Controller
         return response()->json([
             'status' => true,
             'message' => 'Employee attendances fetched successfully.',
-            'data' => $attendances->map(fn (Attendence $attendance) => $this->transformAttendance($attendance))->values(),
+            'data' => $attendances->map(fn(Attendence $attendance) => $this->transformAttendance($attendance))->values(),
         ]);
     }
 
@@ -687,5 +687,52 @@ class AttendenceController extends Controller
         );
         $notification->is_read = false;
         $notification->save();
+    }
+
+
+
+    public function markLeaveByEmployee(Request $request)
+    {
+        if (!$this->isAdminToken($request)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthorized. Valid admin token is required.',
+            ], 401);
+        }
+
+        $validated = $request->validate([
+            'employee_id' => ['required', 'integer', 'exists:employees,id'],
+        ]);
+
+        $today = now('Asia/Kolkata')->toDateString();
+
+        // 🔥 Create OR Update attendance
+        $attendance = Attendence::firstOrNew([
+            'employee_id' => $validated['employee_id'],
+            'date' => $today,
+        ]);
+
+        // ✅ Only LEAVE status
+        $attendance->status = 'leave';
+        $attendance->ip_address = $request->ip();
+
+        // Agar naya record hai to fields reset
+        if (!$attendance->exists) {
+            $attendance->mark_in = null;
+            $attendance->mark_out = null;
+            $attendance->break_start = null;
+            $attendance->break_end = null;
+        }
+
+        $attendance->save();
+
+        // log
+        $this->logAttendanceAction($request, $attendance, 'leave_mark', 'marked employee on leave');
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Employee marked as leave successfully.',
+            'data' => $this->transformAttendance($attendance),
+        ]);
     }
 }
