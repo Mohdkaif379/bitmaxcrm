@@ -61,7 +61,7 @@ Route::delete('sub-admin/delete/{id}', [SubAdminController::class, 'destroy']);
 Route::get('employees', [EmployeeController::class, 'index']);
 Route::post('employee/create', [EmployeeController::class, 'store']);
 Route::get('employees/{id}', [EmployeeController::class, 'show']);
-Route::put('employee/update/{id}', [EmployeeController::class, 'update']); 
+Route::put('employee/update/{id}', [EmployeeController::class, 'update']); // Use POST for update to handle file uploads
 Route::delete('employee/delete/{id}', [EmployeeController::class, 'destroy']);
 
 Route::post('attendence/mark-in', [AttendenceController::class, 'markIn']);
