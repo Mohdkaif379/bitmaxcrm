@@ -26,6 +26,7 @@ use App\Http\Controllers\Leave\LeaveManageController;
 use App\Http\Controllers\Logs\LogsController;
 use App\Http\Controllers\MonthlyAttendnece\MonthlyAttendenceController;
 use App\Http\Controllers\Notification\NotificationController;
+use App\Http\Controllers\LeadsCreate\LeadCreateController;
 use App\Http\Controllers\Proposal\ProposalController;
 use App\Http\Controllers\ReportSubmission\ReportSubmissionController;
 use App\Http\Controllers\SalarySlip\SalarySlipController;
@@ -96,6 +97,12 @@ Route::post('lead/create', [LeadController::class, 'store']);
 Route::get('lead/{id}', [LeadController::class, 'show']);
 Route::put('lead/update/{id}', [LeadController::class, 'update']);
 Route::delete('lead/delete/{id}', [LeadController::class, 'destroy']);
+
+Route::get('lead-creates', [LeadCreateController::class, 'index']);
+Route::post('lead-create/create', [LeadCreateController::class, 'store']);
+Route::get('lead-create/{id}', [LeadCreateController::class, 'show']);
+Route::put('lead-create/update/{id}', [LeadCreateController::class, 'update']);
+Route::delete('lead-create/delete/{id}', [LeadCreateController::class, 'destroy']);
 
 Route::get('lead-interactions', [LeadInteractionController::class, 'index']);
 Route::post('lead-interaction/create', [LeadInteractionController::class, 'store']);
