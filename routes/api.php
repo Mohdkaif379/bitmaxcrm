@@ -36,6 +36,7 @@ use App\Http\Controllers\SyncOfficeIp\SyncOfficeIpController;
 use App\Http\Controllers\Task\TaskController;
 use App\Http\Controllers\TaskAssign\TaskAssignController;
 use App\Http\Controllers\TourConveyance\TourConevyanceFormController;
+use App\Http\Controllers\Visitor\VisitorController;
 use App\Http\Controllers\VisitorInvited\VisiterInviteController;
 use App\Http\Controllers\ElasticSearch\ElasticSearchController;
 use Illuminate\Http\Request;
@@ -91,6 +92,12 @@ Route::post('visitor-invite/create', [VisiterInviteController::class, 'store']);
 Route::get('visitor-invite/{id}', [VisiterInviteController::class, 'show']);
 Route::put('visitor-invite/update/{id}', [VisiterInviteController::class, 'update']);
 Route::delete('visitor-invite/delete/{id}', [VisiterInviteController::class, 'destroy']);
+
+Route::get('visitors', [VisitorController::class, 'index']);
+Route::post('visitor/create', [VisitorController::class, 'store']);
+Route::get('visitor/{id}', [VisitorController::class, 'show']);
+Route::put('visitor/update/{id}', [VisitorController::class, 'update']);
+Route::delete('visitor/delete/{id}', [VisitorController::class, 'destroy']);
 
 Route::get('leads', [LeadController::class, 'index']);
 Route::post('lead/create', [LeadController::class, 'store']);
