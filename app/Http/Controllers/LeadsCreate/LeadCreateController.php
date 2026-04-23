@@ -18,7 +18,7 @@ class LeadCreateController extends Controller
         if (!$admin) {
             return response()->json([
                 'status' => false,
-                'message' => 'Unauthorized. Valid admin token is required.',
+                'message' => 'Unauthorized. Valid admin or subadmin token is required.',
             ], 401);
         }
 
@@ -78,7 +78,7 @@ class LeadCreateController extends Controller
         if (!$admin) {
             return response()->json([
                 'status' => false,
-                'message' => 'Unauthorized. Valid admin token is required.',
+                'message' => 'Unauthorized. Valid admin or subadmin token is required.',
             ], 401);
         }
 
@@ -127,7 +127,7 @@ class LeadCreateController extends Controller
         if (!$admin) {
             return response()->json([
                 'status' => false,
-                'message' => 'Unauthorized. Valid admin token is required.',
+                'message' => 'Unauthorized. Valid admin or subadmin token is required.',
             ], 401);
         }
 
@@ -153,7 +153,7 @@ class LeadCreateController extends Controller
         if (!$admin) {
             return response()->json([
                 'status' => false,
-                'message' => 'Unauthorized. Valid admin token is required.',
+                'message' => 'Unauthorized. Valid admin or subadmin token is required.',
             ], 401);
         }
 
@@ -228,7 +228,7 @@ class LeadCreateController extends Controller
         if (!$admin) {
             return response()->json([
                 'status' => false,
-                'message' => 'Unauthorized. Valid admin token is required.',
+                'message' => 'Unauthorized. Valid admin or subadmin token is required.',
             ], 401);
         }
 
@@ -266,7 +266,8 @@ class LeadCreateController extends Controller
             return null;
         }
 
-        if (($payload['role'] ?? null) !== 'admin') {
+        $role = strtolower((string) ($payload['role'] ?? ''));
+        if (!in_array($role, ['admin', 'sub_admin', 'subadmin'], true)) {
             return null;
         }
 
