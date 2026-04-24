@@ -25,7 +25,7 @@ class ProposalController extends Controller
         }
 
         $validated = $request->validate([
-            'lead_id' => ['nullable', 'integer', 'exists:leads,id'],
+            'lead_id' => ['nullable', 'integer', 'exists:lead_creates,id'],
             'proposal_status' => ['nullable', 'in:sent,rejected,approved'],
             'proposal_code' => ['nullable', 'string', 'max:100'],
             'search' => ['nullable', 'string', 'max:255'],
@@ -81,7 +81,7 @@ class ProposalController extends Controller
         }
 
         $validated = $request->validate([
-            'lead_id' => ['required', 'integer', 'exists:leads,id'],
+            'lead_id' => ['required', 'integer', 'exists:lead_creates,id'], 
             'proposal_amount' => ['required', 'numeric', 'min:0'],
             'proposal_status' => ['nullable', 'in:sent,rejected,approved'],
             'file' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:10240'],
@@ -151,7 +151,7 @@ class ProposalController extends Controller
         }
 
         $validated = $request->validate([
-            'lead_id' => ['sometimes', 'required', 'integer', 'exists:leads,id'],
+            'lead_id' => ['sometimes', 'required', 'integer', 'exists:lead_creates,id'],
             'proposal_amount' => ['sometimes', 'required', 'numeric', 'min:0'],
             'proposal_status' => ['nullable', 'in:sent,rejected,approved'],
             'file' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:10240'],

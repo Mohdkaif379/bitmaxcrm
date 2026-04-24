@@ -23,7 +23,7 @@ class LeadInteractionController extends Controller
         }
 
         $validated = $request->validate([
-            'lead_id' => ['nullable', 'integer', 'exists:leads,id'],
+            'lead_id' => ['nullable', 'integer', 'exists:lead_creates,id'],
             'search' => ['nullable', 'string', 'max:255'],
             'interaction_type' => ['nullable', 'string', 'max:100'],
             'interaction_status' => ['nullable', 'string', 'max:100'],
@@ -83,7 +83,7 @@ class LeadInteractionController extends Controller
         }
 
         $validated = $request->validate([
-            'lead_id' => ['required', 'integer', 'exists:leads,id'],
+            'lead_id' => ['required', 'integer', 'exists:lead_creates,id'],
             'interaction_type' => ['required', 'string', 'max:100'],
             'description' => ['nullable', 'string'],
             'interaction_date' => ['required', 'date'],
@@ -153,7 +153,7 @@ class LeadInteractionController extends Controller
         }
 
         $validated = $request->validate([
-            'lead_id' => ['sometimes', 'required', 'integer', 'exists:leads,id'],
+            'lead_id' => ['sometimes', 'required', 'integer', 'exists:lead_creates,id'],
             'interaction_type' => ['sometimes', 'required', 'string', 'max:100'],
             'description' => ['nullable', 'string'],
             'interaction_date' => ['sometimes', 'required', 'date'],
