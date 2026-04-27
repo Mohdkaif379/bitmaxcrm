@@ -14,6 +14,8 @@ class CandidateExperience extends Model
         'department',
         'tenure',
         'city',
+        'current_salary',
+        'expected_salary',
     ];
 
     public function candidateInfo(): BelongsTo

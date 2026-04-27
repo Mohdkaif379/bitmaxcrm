@@ -63,4 +63,9 @@ class Employee extends Model
         return $this->belongsToMany(Task::class, 'employee_task', 'employee_id', 'task_id')
             ->withTimestamps();
     }
+
+    public function candidates()
+    {
+        return $this->hasMany(CandidateInfo::class, 'conducted_by');
+    }
 }

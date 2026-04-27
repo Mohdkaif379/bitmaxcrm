@@ -11,71 +11,181 @@ use Illuminate\Support\Facades\Cache;
 
 class ExpenseController extends Controller
 {
-    public function index(Request $request)
-    {
-        $admin = $this->authenticatedAdminFromToken($request);
-        if (!$admin) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Unauthorized.',
-            ], 401);
-        }
-
-        $validated = $request->validate([
-            'search' => ['nullable', 'string', 'max:255'],
-            'period' => ['nullable', 'in:daily,weekly,monthly,yearly'],
-        ]);
-
-        $query = Expenses::with('creator');
-        $search = trim((string) ($validated['search'] ?? ''));
-        $period = $validated['period'] ?? null;
-
-        if (!empty($period)) {
-            $now = now();
-
-            if ($period === 'daily') {
-                $query->whereDate('date', $now->toDateString());
-            } elseif ($period === 'weekly') {
-                $query->whereBetween('date', [
-                    $now->copy()->startOfWeek()->toDateString(),
-                    $now->copy()->endOfWeek()->toDateString(),
-                ]);
-            } elseif ($period === 'monthly') {
-                $query->whereYear('date', $now->year)
-                    ->whereMonth('date', $now->month);
-            } elseif ($period === 'yearly') {
-                $query->whereYear('date', $now->year);
-            }
-        }
-
-        if ($search !== '') {
-            $query->where(function ($builder) use ($search) {
-                $builder->where('title', 'like', '%' . $search . '%')
-                    ->orWhere('category', 'like', '%' . $search . '%')
-                    ->orWhere('amount', 'like', '%' . $search . '%')
-                    ->orWhere('date', 'like', '%' . $search . '%')
-                    ->orWhereHas('creator', function ($creatorQuery) use ($search) {
-                        $creatorQuery->where('full_name', 'like', '%' . $search . '%')
-                            ->orWhere('email', 'like', '%' . $search . '%');
-                    });
-            });
-        }
-
-        $expenses = $query->latest()->paginate(10);
-        $expenses->getCollection()->transform(fn (Expenses $expense) => $this->transformExpense($expense));
-
+   public function index(Request $request)
+{
+    $admin = $this->authenticatedAdminFromToken($request);
+    if (!$admin) {
         return response()->json([
-            'status' => true,
-            'message' => 'Expenses fetched successfully.',
-            'data' => $expenses->items(),
-            'pagination' => [
-                'current_page' => $expenses->currentPage(),
-                'last_page' => $expenses->lastPage(),
-                'per_page' => $expenses->perPage(),
-                'total' => $expenses->total(),
-            ],
-        ]);
+            'status' => false,
+            'message' => 'Unauthorized.',
+        ], 401);
     }
+
+    $validated = $request->validate([
+        'search' => ['nullable', 'string', 'max:255'],
+        'period' => ['nullable', 'in:daily,weekly,monthly,yearly'],
+    ]);
+
+    $query = Expenses::with('creator');
+    $search = trim((string) ($validated['search'] ?? ''));
+    $period = $validated['period'] ?? null;
+
+    /*
+    |--------------------------------------------------------------------------
+    | 🔍 Filters
+    |--------------------------------------------------------------------------
+    */
+    if (!empty($period)) {
+        $now = now();
+
+        if ($period === 'daily') {
+            $query->whereDate('date', $now);
+        } elseif ($period === 'weekly') {
+            $query->whereBetween('date', [
+                $now->copy()->startOfWeek(),
+                $now->copy()->endOfWeek(),
+            ]);
+        } elseif ($period === 'monthly') {
+            $query->whereYear('date', $now->year)
+                  ->whereMonth('date', $now->month);
+        } elseif ($period === 'yearly') {
+            $query->whereYear('date', $now->year);
+        }
+    }
+
+    if ($search !== '') {
+        $query->where(function ($builder) use ($search) {
+
+            $builder->where('title', 'like', "%$search%")
+                ->orWhere('category', 'like', "%$search%")
+                ->orWhereHas('creator', function ($q) use ($search) {
+                    $q->where('full_name', 'like', "%$search%")
+                      ->orWhere('email', 'like', "%$search%");
+                });
+
+            // numeric search (amount)
+            if (is_numeric($search)) {
+                $builder->orWhere('amount', $search);
+            }
+
+            // date search
+            if (strtotime($search)) {
+                $builder->orWhereDate('date', $search);
+            }
+        });
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | 📦 DATA (NO PAGINATION)
+    |--------------------------------------------------------------------------
+    */
+    $expenses = $query->latest()->get()
+        ->map(fn (Expenses $expense) => $this->transformExpense($expense));
+
+    $now = now();
+
+    /*
+    |--------------------------------------------------------------------------
+    | 📊 SUMMARY
+    |--------------------------------------------------------------------------
+    */
+    $daily = Expenses::whereDate('date', $now)->sum('amount');
+
+    $monthly = Expenses::whereMonth('date', $now->month)
+        ->whereYear('date', $now->year)
+        ->sum('amount');
+
+    $yearly = Expenses::whereYear('date', $now->year)->sum('amount');
+
+    $average = round(Expenses::avg('amount'), 2);
+
+    /*
+    |--------------------------------------------------------------------------
+    | 📈 MONTHLY TREND (Jan–Dec)
+    |--------------------------------------------------------------------------
+    */
+    $monthlyRaw = Expenses::selectRaw('MONTH(date) as month, SUM(amount) as total')
+        ->whereYear('date', $now->year)
+        ->groupBy('month')
+        ->pluck('total', 'month');
+
+    $monthLabels = [];
+    $monthData = [];
+
+    for ($i = 1; $i <= 12; $i++) {
+        $monthLabels[] = date("M", mktime(0, 0, 0, $i, 1));
+        $monthData[] = $monthlyRaw[$i] ?? 0;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | 📅 DAILY TREND (LAST 7 DAYS)
+    |--------------------------------------------------------------------------
+    */
+    $dailyRaw = Expenses::selectRaw('DATE(date) as day, SUM(amount) as total')
+        ->whereBetween('date', [$now->copy()->subDays(6), $now])
+        ->groupBy('day')
+        ->pluck('total', 'day');
+
+    $dayLabels = [];
+    $dayData = [];
+
+    for ($i = 6; $i >= 0; $i--) {
+        $date = $now->copy()->subDays($i)->toDateString();
+        $dayLabels[] = date("d M", strtotime($date));
+        $dayData[] = $dailyRaw[$date] ?? 0;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | 📊 CATEGORY STATS
+    |--------------------------------------------------------------------------
+    */
+    $categories = Expenses::select('category')
+        ->selectRaw('SUM(amount) as total')
+        ->groupBy('category')
+        ->get();
+
+    $catLabels = $categories->pluck('category');
+    $catData = $categories->pluck('total');
+
+    /*
+    |--------------------------------------------------------------------------
+    | 🧾 RESPONSE
+    |--------------------------------------------------------------------------
+    */
+    return response()->json([
+        'status' => true,
+        'message' => 'Expenses fetched successfully.',
+
+        'stats' => [
+            'summary' => [
+                'daily' => $daily,
+                'monthly' => $monthly,
+                'yearly' => $yearly,
+                'average' => $average,
+            ],
+
+            'monthly_trend' => [
+                'labels' => $monthLabels, // Jan–Dec
+                'data' => $monthData,
+            ],
+
+            'daily_trend' => [
+                'labels' => $dayLabels, // last 7 days
+                'data' => $dayData,
+            ],
+
+            'category' => [
+                'labels' => $catLabels,
+                'data' => $catData,
+            ],
+        ],
+
+        'data' => $expenses,
+    ]);
+}
 
     public function store(Request $request)
     {

@@ -26,6 +26,9 @@ class CandidateInfo extends Model
         'date',
         'place',
         'signature',
+        'conducted_by',
+        'status',
+        'remarks',
     ];
 
     public function educations(): HasMany
@@ -51,5 +54,9 @@ class CandidateInfo extends Model
     public function document(): HasOne
     {
         return $this->hasOne(CandidateDocument::class);
+    }
+    public function conductedBy()
+    {
+        return $this->belongsTo(Employee::class, 'conducted_by');
     }
 }

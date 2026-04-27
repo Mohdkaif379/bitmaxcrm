@@ -24,6 +24,7 @@ class CandidateInterviewController extends Controller
         ]);
 
         $query = CandidateInfo::query()->with([
+            'conductedBy',
             'educations',
             'experiences',
             'address',
@@ -43,7 +44,14 @@ class CandidateInterviewController extends Controller
                     ->orWhere('nationality', 'like', '%' . $search . '%')
                     ->orWhere('religion', 'like', '%' . $search . '%')
                     ->orWhere('birth_place', 'like', '%' . $search . '%')
-                    ->orWhere('place', 'like', '%' . $search . '%');
+                    ->orWhere('place', 'like', '%' . $search . '%')
+                    ->orWhere('status', 'like', '%' . $search . '%')
+                    ->orWhere('remarks', 'like', '%' . $search . '%')
+                    ->orWhereHas('conductedBy', function ($employeeQuery) use ($search) {
+                        $employeeQuery->where('emp_name', 'like', '%' . $search . '%')
+                            ->orWhere('emp_email', 'like', '%' . $search . '%')
+                            ->orWhere('emp_phone', 'like', '%' . $search . '%');
+                    });
             });
         }
 
@@ -82,6 +90,7 @@ class CandidateInterviewController extends Controller
             $this->syncDocument($candidate->id, $validated['document'] ?? null);
 
             return $candidate->fresh([
+                'conductedBy',
                 'educations',
                 'experiences',
                 'address',
@@ -100,6 +109,7 @@ class CandidateInterviewController extends Controller
     public function show(int $id)
     {
         $candidate = CandidateInfo::with([
+            'conductedBy',
             'educations',
             'experiences',
             'address',
@@ -124,6 +134,7 @@ class CandidateInterviewController extends Controller
     public function update(Request $request, int $id)
     {
         $candidate = CandidateInfo::with([
+            'conductedBy',
             'educations',
             'experiences',
             'address',
@@ -170,6 +181,7 @@ class CandidateInterviewController extends Controller
             }
 
             return $candidate->fresh([
+                'conductedBy',
                 'educations',
                 'experiences',
                 'address',
@@ -234,6 +246,9 @@ class CandidateInterviewController extends Controller
             'birth_place' => ['nullable', 'string', 'max:255'],
             'date' => ['nullable', 'date'],
             'place' => ['nullable', 'string', 'max:255'],
+            'conducted_by' => ['nullable', 'integer', 'exists:employees,id'],
+            'status' => ['nullable', 'in:pending,hold,rejected,selected'],
+            'remarks' => ['nullable', 'string'],
             'signature' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'educations' => ['nullable', 'array'],
             'educations.*.qualification' => ['nullable', 'string', 'max:255'],
@@ -250,6 +265,8 @@ class CandidateInterviewController extends Controller
             'experiences.*.department' => ['nullable', 'string', 'max:255'],
             'experiences.*.tenure' => ['nullable', 'string', 'max:255'],
             'experiences.*.city' => ['nullable', 'string', 'max:255'],
+            'experiences.*.current_salary' => ['nullable', 'numeric', 'min:0'],
+            'experiences.*.expected_salary' => ['nullable', 'numeric', 'min:0'],
             'family' => ['nullable', 'array'],
             'family.father_name' => ['nullable', 'string', 'max:255'],
             'family.mother_name' => ['nullable', 'string', 'max:255'],
@@ -288,6 +305,9 @@ class CandidateInterviewController extends Controller
             'birth_place',
             'date',
             'place',
+            'conducted_by',
+            'status',
+            'remarks',
         ];
 
         foreach ($fields as $field) {
@@ -342,6 +362,8 @@ class CandidateInterviewController extends Controller
             $record->department = $experience['department'] ?? null;
             $record->tenure = $experience['tenure'] ?? null;
             $record->city = $experience['city'] ?? null;
+            $record->current_salary = $experience['current_salary'] ?? null;
+            $record->expected_salary = $experience['expected_salary'] ?? null;
             $record->save();
         }
     }
@@ -385,7 +407,9 @@ class CandidateInterviewController extends Controller
     private function transformCandidate(CandidateInfo $candidate): array
     {
         $data = $candidate->toArray();
+        $data['conducted_by'] = $candidate->getRawOriginal('conducted_by');
         $data['signature'] = $candidate->signature ? url(Storage::url($candidate->signature)) : null;
+        $data['conducted_by_employee'] = $candidate->conductedBy ? $candidate->conductedBy->toArray() : null;
         $data['educations'] = collect($candidate->educations ?? [])->map(function (CandidateEducation $education) {
             return $education->toArray();
         })->values()->all();
