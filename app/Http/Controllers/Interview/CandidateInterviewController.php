@@ -232,7 +232,12 @@ class CandidateInterviewController extends Controller
                 'max:255',
                 Rule::unique('candidate_infos', 'email')->ignore($candidateId),
             ],
-            'phone' => ['nullable', 'string', 'max:20'],
+            'phone' => [
+                'nullable',
+                'string',
+                'max:20',
+                Rule::unique('candidate_infos', 'phone')->ignore($candidateId),
+            ],
             'dob' => ['nullable', 'date'],
             'blood_group' => ['nullable', 'string', 'max:50'],
             'age' => ['nullable', 'string', 'max:20'],
@@ -268,7 +273,15 @@ class CandidateInterviewController extends Controller
             'experiences.*.current_salary' => ['nullable', 'numeric', 'min:0'],
             'experiences.*.expected_salary' => ['nullable', 'numeric', 'min:0'],
             'family' => ['nullable', 'array'],
-            'family.father_name' => ['nullable', 'string', 'max:255'],
+            'family.father_name' => array_filter([
+                'nullable',
+                'string',
+                'max:255',
+                $candidateId
+                    ? Rule::unique('candidate_families', 'father_name')
+                        ->where(fn ($query) => $query->where('candidate_info_id', '!=', $candidateId))
+                    : Rule::unique('candidate_families', 'father_name'),
+            ]),
             'family.mother_name' => ['nullable', 'string', 'max:255'],
             'family.occupation' => ['nullable', 'string', 'max:255'],
             'family.mother_occupation' => ['nullable', 'string', 'max:255'],
