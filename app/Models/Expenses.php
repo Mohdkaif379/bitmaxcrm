@@ -13,6 +13,7 @@ class Expenses extends Model
         'amount',
         'date',
         'created_by',
+        'paid_by',
     ];
 
     public function creator(): BelongsTo

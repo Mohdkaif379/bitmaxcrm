@@ -62,7 +62,7 @@ class CandidateInterviewController extends Controller
             'status' => true,
             'message' => 'Candidates fetched successfully.',
             'data' => collect($candidates->items())
-                ->map(fn (CandidateInfo $candidate) => $this->transformCandidate($candidate))
+                ->map(fn(CandidateInfo $candidate) => $this->transformCandidate($candidate))
                 ->values()
                 ->all(),
             'pagination' => [
@@ -254,6 +254,7 @@ class CandidateInterviewController extends Controller
             'conducted_by' => ['nullable', 'integer', 'exists:employees,id'],
             'status' => ['nullable', 'in:pending,hold,rejected,selected'],
             'remarks' => ['nullable', 'string'],
+            'resume' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:5120'],
             'signature' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'educations' => ['nullable', 'array'],
             'educations.*.qualification' => ['nullable', 'string', 'max:255'],
@@ -279,7 +280,7 @@ class CandidateInterviewController extends Controller
                 'max:255',
                 $candidateId
                     ? Rule::unique('candidate_families', 'father_name')
-                        ->where(fn ($query) => $query->where('candidate_info_id', '!=', $candidateId))
+                    ->where(fn($query) => $query->where('candidate_info_id', '!=', $candidateId))
                     : Rule::unique('candidate_families', 'father_name'),
             ]),
             'family.mother_name' => ['nullable', 'string', 'max:255'],
@@ -335,6 +336,20 @@ class CandidateInterviewController extends Controller
             }
 
             $candidate->signature = $request->file('signature')->store('candidate/signatures', 'public');
+        }
+
+        if ($request->hasFile('resume')) {
+
+            // purani file delete (update case me useful)
+            if (!empty($candidate->resume) && Storage::disk('public')->exists($candidate->resume)) {
+                Storage::disk('public')->delete($candidate->resume);
+            }
+
+            // new file store
+            $path = $request->file('resume')->store('candidate/resumes', 'public');
+
+            // DB me sirf path save karo
+            $candidate->resume = $path;
         }
     }
 

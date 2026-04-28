@@ -29,6 +29,7 @@ class CandidateInfo extends Model
         'conducted_by',
         'status',
         'remarks',
+        'resume',
     ];
 
     public function educations(): HasMany

@@ -202,6 +202,7 @@ class ExpenseController extends Controller
             'category' => ['required', 'string', 'max:255'],
             'amount' => ['required', 'numeric', 'min:0'],
             'date' => ['required', 'date'],
+            'paid_by' => ['nullable', 'string', 'max:255'],
         ]);
 
         $expense = new Expenses();
@@ -210,6 +211,7 @@ class ExpenseController extends Controller
         $expense->amount = $validated['amount'];
         $expense->date = $validated['date'];
         $expense->created_by = $admin->id;
+       $expense->paid_by = $validated['paid_by'];
         $expense->save();
         $expense->load('creator');
         $this->logExpenseAction($request, $admin, $expense, 'create', 'created expense');
