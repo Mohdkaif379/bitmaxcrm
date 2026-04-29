@@ -211,7 +211,7 @@ class ExpenseController extends Controller
         $expense->amount = $validated['amount'];
         $expense->date = $validated['date'];
         $expense->created_by = $admin->id;
-       $expense->paid_by = $validated['paid_by'];
+        $expense->paid_by = $validated['paid_by'];
         $expense->save();
         $expense->load('creator');
         $this->logExpenseAction($request, $admin, $expense, 'create', 'created expense');
@@ -271,6 +271,7 @@ class ExpenseController extends Controller
             'category' => ['sometimes', 'required', 'string', 'max:255'],
             'amount' => ['sometimes', 'required', 'numeric', 'min:0'],
             'date' => ['sometimes', 'required', 'date'],
+                'paid_by' => ['sometimes', 'nullable', 'string', 'max:255'],
         ]);
 
         if (array_key_exists('title', $validated)) {
@@ -287,6 +288,10 @@ class ExpenseController extends Controller
 
         if (array_key_exists('date', $validated)) {
             $expense->date = $validated['date'];
+        }
+
+        if (array_key_exists('paid_by', $validated)) {
+            $expense->paid_by = $validated['paid_by'];
         }
 
         $expense->save();
