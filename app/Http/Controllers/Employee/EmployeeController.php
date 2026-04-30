@@ -41,7 +41,7 @@ class EmployeeController extends Controller
         return response()->json([
             'status' => true,
             'message' => 'Employees fetched successfully.',
-            'data' => $employees->map(fn (Employee $employee) => $this->transformEmployee($employee)),
+            'data' => $employees->map(fn(Employee $employee) => $this->transformEmployee($employee)),
         ]);
     }
 
@@ -130,108 +130,12 @@ class EmployeeController extends Controller
     }
 
     public function update(Request $request, $id)
-{
-    if ($authResponse = $this->ensureAdminAuthorized($request)) {
-        return $authResponse;
-    }
-
-    $employee = Employee::with([
-        'familyDetails',
-        'bankDetails',
-        'payrolls',
-        'qualifications',
-        'addresses',
-        'documents',
-        'experiences',
-       
-    ])->find($id);
-
-    if (!$employee) {
-        return response()->json([
-            'status' => false,
-            'message' => 'Employee not found.',
-        ], 404);
-    }
-
-    // Accept alias
-    if ($request->hasFile('profile_image') && !$request->hasFile('profile_photo')) {
-        $request->files->set('profile_photo', $request->file('profile_image'));
-    }
-
-    $validated = $this->validateEmployee($request, $employee->id);
-
-    $employee = DB::transaction(function () use ($request, $validated, $employee) {
-
-        if (array_key_exists('emp_name', $validated)) {
-            $employee->emp_name = $validated['emp_name'];
+    {
+        if ($authResponse = $this->ensureAdminAuthorized($request)) {
+            return $authResponse;
         }
 
-        if (array_key_exists('emp_email', $validated)) {
-            $employee->emp_email = $validated['emp_email'];
-        }
-
-        if (array_key_exists('emp_phone', $validated)) {
-            $employee->emp_phone = $validated['emp_phone'];
-        }
-
-        if (array_key_exists('joining_date', $validated)) {
-            $employee->joining_date = $validated['joining_date'];
-        }
-
-        if (array_key_exists('dob', $validated)) {
-            $employee->dob = $validated['dob'];
-        }
-
-        if (array_key_exists('position', $validated)) {
-            $employee->position = $validated['position'];
-        }
-
-        if (array_key_exists('department', $validated)) {
-            $employee->department = $validated['department'];
-        }
-
-        // 🔥 STATUS UPDATE + TOKEN DELETE
-        if (array_key_exists('status', $validated)) {
-            $employee->status = $validated['status'];
-        }
-
-        if (array_key_exists('role', $validated)) {
-            $employee->role = $validated['role'];
-        }
-
-        if (array_key_exists('password', $validated)) {
-            $employee->password = Hash::make($validated['password']);
-        }
-
-        // Profile photo
-        if ($request->hasFile('profile_photo')) {
-            if ($employee->profile_photo && Storage::disk('public')->exists($employee->profile_photo)) {
-                Storage::disk('public')->delete($employee->profile_photo);
-            }
-
-            $employee->profile_photo = $request->file('profile_photo')->store('employees/profile_photos', 'public');
-        }
-
-        $employee->save();
-
-        // 🔥 AFTER SAVE → CHECK INACTIVE & DELETE TOKENS
-        if ($employee->status === 'inactive') {
-
-            // Case 1: Employee hi login karta hai
-            if (method_exists($employee, 'tokens')) {
-                $employee->tokens()->delete();
-            }
-        }
-        // Sync relations
-        $this->syncFamilyDetails($request, $employee);
-        $this->syncBankDetails($request, $employee);
-        $this->syncPayrolls($request, $employee);
-        $this->syncQualifications($request, $employee);
-        $this->syncAddresses($request, $employee);
-        $this->syncDocuments($request, $employee);
-        $this->syncExperiences($request, $employee);
-
-        return $employee->load([
+        $employee = Employee::with([
             'familyDetails',
             'bankDetails',
             'payrolls',
@@ -239,17 +143,113 @@ class EmployeeController extends Controller
             'addresses',
             'documents',
             'experiences',
+
+        ])->find($id);
+
+        if (!$employee) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Employee not found.',
+            ], 404);
+        }
+
+        // Accept alias
+        if ($request->hasFile('profile_image') && !$request->hasFile('profile_photo')) {
+            $request->files->set('profile_photo', $request->file('profile_image'));
+        }
+
+        $validated = $this->validateEmployee($request, $employee->id);
+
+        $employee = DB::transaction(function () use ($request, $validated, $employee) {
+
+            if (array_key_exists('emp_name', $validated)) {
+                $employee->emp_name = $validated['emp_name'];
+            }
+
+            if (array_key_exists('emp_email', $validated)) {
+                $employee->emp_email = $validated['emp_email'];
+            }
+
+            if (array_key_exists('emp_phone', $validated)) {
+                $employee->emp_phone = $validated['emp_phone'];
+            }
+
+            if (array_key_exists('joining_date', $validated)) {
+                $employee->joining_date = $validated['joining_date'];
+            }
+
+            if (array_key_exists('dob', $validated)) {
+                $employee->dob = $validated['dob'];
+            }
+
+            if (array_key_exists('position', $validated)) {
+                $employee->position = $validated['position'];
+            }
+
+            if (array_key_exists('department', $validated)) {
+                $employee->department = $validated['department'];
+            }
+
+            // 🔥 STATUS UPDATE + TOKEN DELETE
+            if (array_key_exists('status', $validated)) {
+                $employee->status = $validated['status'];
+            }
+
+            if (array_key_exists('role', $validated)) {
+                $employee->role = $validated['role'];
+            }
+
+            if (array_key_exists('password', $validated)) {
+                $employee->password = Hash::make($validated['password']);
+            }
+
+            // Profile photo
+            if ($request->hasFile('profile_photo')) {
+                if ($employee->profile_photo && Storage::disk('public')->exists($employee->profile_photo)) {
+                    Storage::disk('public')->delete($employee->profile_photo);
+                }
+
+                $employee->profile_photo = $request->file('profile_photo')->store('employees/profile_photos', 'public');
+            }
+
+            $employee->save();
+
+            // 🔥 AFTER SAVE → CHECK INACTIVE & DELETE TOKENS
+            if ($employee->status === 'inactive') {
+
+                // Case 1: Employee hi login karta hai
+                if (method_exists($employee, 'tokens')) {
+                    $employee->tokens()->delete();
+                }
+            }
+            // Sync relations
+            $this->syncFamilyDetails($request, $employee);
+            $this->syncBankDetails($request, $employee);
+            $this->syncPayrolls($request, $employee);
+            $this->syncQualifications($request, $employee);
+            $this->syncAddresses($request, $employee);
+            $this->syncDocuments($request, $employee);
+            $this->syncExperiences($request, $employee);
+
+            return $employee->load([
+                'familyDetails',
+                'bankDetails',
+                'payrolls',
+                'qualifications',
+                'addresses',
+                'documents',
+                'experiences',
+            ]);
+        });
+
+        $this->logEmployeeAction($request, $employee, 'update', 'updated employee');
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Employee updated successfully.',
+            'data' => $this->transformEmployee($employee),
         ]);
-    });
-
-    $this->logEmployeeAction($request, $employee, 'update', 'updated employee');
-
-    return response()->json([
-        'status' => true,
-        'message' => 'Employee updated successfully.',
-        'data' => $this->transformEmployee($employee),
-    ]);
-}
+    }
 
     public function destroy(Request $request, $id)
     {
@@ -396,512 +396,512 @@ class EmployeeController extends Controller
         return sprintf('BT/%d/%s', $maxSequence + 1, $yearSuffix);
     }
 
-  private function syncFamilyDetails(Request $request, Employee $employee): void
-{
-    if (!$request->has('family_details')) {
-        return;
-    }
-
-    $familyDetails = $request->input('family_details', []);
-
-    // 🔥 STEP 1: Delete missing family records
-    $existingIds = $employee->familyDetails()->pluck('id')->toArray();
-
-    $incomingIds = collect($familyDetails)
-        ->pluck('id')
-        ->filter()
-        ->toArray();
-
-    $idsToDelete = array_diff($existingIds, $incomingIds);
-
-    if (!empty($idsToDelete)) {
-        $recordsToDelete = $employee->familyDetails()->whereIn('id', $idsToDelete)->get();
-
-        foreach ($recordsToDelete as $record) {
-            // 🗑️ delete files also
-            if ($record->aadhar_profile && Storage::disk('public')->exists($record->aadhar_profile)) {
-                Storage::disk('public')->delete($record->aadhar_profile);
-            }
-
-            if ($record->pan_profile && Storage::disk('public')->exists($record->pan_profile)) {
-                Storage::disk('public')->delete($record->pan_profile);
-            }
-
-            $record->delete();
+    private function syncFamilyDetails(Request $request, Employee $employee): void
+    {
+        if (!$request->has('family_details')) {
+            return;
         }
-    }
 
-    // 🔄 STEP 2: Update / Create
-    foreach ($familyDetails as $index => $item) {
-        $isExisting = isset($item['id']);
+        $familyDetails = $request->input('family_details', []);
 
-        $record = $isExisting
-            ? EmployeeFamilyDetails::where('id', $item['id'])
+        // 🔥 STEP 1: Delete missing family records
+        $existingIds = $employee->familyDetails()->pluck('id')->toArray();
+
+        $incomingIds = collect($familyDetails)
+            ->pluck('id')
+            ->filter()
+            ->toArray();
+
+        $idsToDelete = array_diff($existingIds, $incomingIds);
+
+        if (!empty($idsToDelete)) {
+            $recordsToDelete = $employee->familyDetails()->whereIn('id', $idsToDelete)->get();
+
+            foreach ($recordsToDelete as $record) {
+                // 🗑️ delete files also
+                if ($record->aadhar_profile && Storage::disk('public')->exists($record->aadhar_profile)) {
+                    Storage::disk('public')->delete($record->aadhar_profile);
+                }
+
+                if ($record->pan_profile && Storage::disk('public')->exists($record->pan_profile)) {
+                    Storage::disk('public')->delete($record->pan_profile);
+                }
+
+                $record->delete();
+            }
+        }
+
+        // 🔄 STEP 2: Update / Create
+        foreach ($familyDetails as $index => $item) {
+            $isExisting = isset($item['id']);
+
+            $record = $isExisting
+                ? EmployeeFamilyDetails::where('id', $item['id'])
                 ->where('employee_id', $employee->id)
                 ->first()
-            : new EmployeeFamilyDetails();
+                : new EmployeeFamilyDetails();
 
-        if (!$record) {
-            continue;
-        }
-
-        if (
-            !$isExisting &&
-            (
-                !isset($item['name']) || $item['name'] === '' ||
-                !isset($item['relationship']) || $item['relationship'] === ''
-            )
-        ) {
-            continue;
-        }
-
-        $record->employee_id = $employee->id;
-
-        if (array_key_exists('name', $item)) {
-            $record->name = $item['name'];
-        }
-
-        if (array_key_exists('relationship', $item) && $item['relationship'] !== null && $item['relationship'] !== '') {
-            $record->relationship = $item['relationship'];
-        }
-
-        if (array_key_exists('contact', $item)) {
-            $record->contact = $item['contact'];
-        }
-
-        if (array_key_exists('aadhar_number', $item)) {
-            $record->aadhar_number = $item['aadhar_number'];
-        }
-
-        if (array_key_exists('pan_number', $item)) {
-            $record->pan_number = $item['pan_number'];
-        }
-
-        // 📂 Aadhar file
-        $aadharFile = $request->file("family_details.$index.aadhar_profile");
-        if ($aadharFile) {
-            if ($record->aadhar_profile && Storage::disk('public')->exists($record->aadhar_profile)) {
-                Storage::disk('public')->delete($record->aadhar_profile);
+            if (!$record) {
+                continue;
             }
 
-            $record->aadhar_profile = $aadharFile->store('employees/family/aadhar', 'public');
-        }
-
-        // 📂 PAN file
-        $panFile = $request->file("family_details.$index.pan_profile");
-        if ($panFile) {
-            if ($record->pan_profile && Storage::disk('public')->exists($record->pan_profile)) {
-                Storage::disk('public')->delete($record->pan_profile);
+            if (
+                !$isExisting &&
+                (
+                    !isset($item['name']) || $item['name'] === '' ||
+                    !isset($item['relationship']) || $item['relationship'] === ''
+                )
+            ) {
+                continue;
             }
 
-            $record->pan_profile = $panFile->store('employees/family/pan', 'public');
+            $record->employee_id = $employee->id;
+
+            if (array_key_exists('name', $item)) {
+                $record->name = $item['name'];
+            }
+
+            if (array_key_exists('relationship', $item) && $item['relationship'] !== null && $item['relationship'] !== '') {
+                $record->relationship = $item['relationship'];
+            }
+
+            if (array_key_exists('contact', $item)) {
+                $record->contact = $item['contact'];
+            }
+
+            if (array_key_exists('aadhar_number', $item)) {
+                $record->aadhar_number = $item['aadhar_number'];
+            }
+
+            if (array_key_exists('pan_number', $item)) {
+                $record->pan_number = $item['pan_number'];
+            }
+
+            // 📂 Aadhar file
+            $aadharFile = $request->file("family_details.$index.aadhar_profile");
+            if ($aadharFile) {
+                if ($record->aadhar_profile && Storage::disk('public')->exists($record->aadhar_profile)) {
+                    Storage::disk('public')->delete($record->aadhar_profile);
+                }
+
+                $record->aadhar_profile = $aadharFile->store('employees/family/aadhar', 'public');
+            }
+
+            // 📂 PAN file
+            $panFile = $request->file("family_details.$index.pan_profile");
+            if ($panFile) {
+                if ($record->pan_profile && Storage::disk('public')->exists($record->pan_profile)) {
+                    Storage::disk('public')->delete($record->pan_profile);
+                }
+
+                $record->pan_profile = $panFile->store('employees/family/pan', 'public');
+            }
+
+            $record->save();
+        }
+    }
+
+
+    private function syncBankDetails(Request $request, Employee $employee): void
+    {
+        if (!$request->has('bank_details')) {
+            return;
         }
 
-        $record->save();
-    }
-}
+        $bankDetails = $request->input('bank_details', []);
 
+        // 🔥 STEP 1: Delete missing bank records
+        $existingIds = $employee->bankDetails()->pluck('id')->toArray();
 
-private function syncBankDetails(Request $request, Employee $employee): void
-{
-    if (!$request->has('bank_details')) {
-        return;
-    }
+        $incomingIds = collect($bankDetails)
+            ->pluck('id')
+            ->filter()
+            ->toArray();
 
-    $bankDetails = $request->input('bank_details', []);
+        $idsToDelete = array_diff($existingIds, $incomingIds);
 
-    // 🔥 STEP 1: Delete missing bank records
-    $existingIds = $employee->bankDetails()->pluck('id')->toArray();
+        if (!empty($idsToDelete)) {
+            $employee->bankDetails()->whereIn('id', $idsToDelete)->delete();
+        }
 
-    $incomingIds = collect($bankDetails)
-        ->pluck('id')
-        ->filter()
-        ->toArray();
+        // 🔄 STEP 2: Update / Create
+        foreach ($bankDetails as $item) {
+            $isExisting = isset($item['id']);
 
-    $idsToDelete = array_diff($existingIds, $incomingIds);
-
-    if (!empty($idsToDelete)) {
-        $employee->bankDetails()->whereIn('id', $idsToDelete)->delete();
-    }
-
-    // 🔄 STEP 2: Update / Create
-    foreach ($bankDetails as $item) {
-        $isExisting = isset($item['id']);
-
-        $record = $isExisting
-            ? EmployeeBankDetails::where('id', $item['id'])
+            $record = $isExisting
+                ? EmployeeBankDetails::where('id', $item['id'])
                 ->where('employee_id', $employee->id)
                 ->first()
-            : new EmployeeBankDetails();
+                : new EmployeeBankDetails();
 
-        if (!$record) {
-            continue;
+            if (!$record) {
+                continue;
+            }
+
+            if (
+                !$isExisting &&
+                (
+                    !isset($item['bank_name']) || $item['bank_name'] === '' ||
+                    !isset($item['account_number']) || $item['account_number'] === '' ||
+                    !isset($item['ifsc_code']) || $item['ifsc_code'] === ''
+                )
+            ) {
+                continue;
+            }
+
+            $record->employee_id = $employee->id;
+
+            if (array_key_exists('bank_name', $item)) {
+                $record->bank_name = $item['bank_name'];
+            }
+
+            if (array_key_exists('account_number', $item)) {
+                $record->account_number = $item['account_number'];
+            }
+
+            if (array_key_exists('ifsc_code', $item) && $item['ifsc_code'] !== null && $item['ifsc_code'] !== '') {
+                $record->ifsc_code = $item['ifsc_code'];
+            }
+
+            if (array_key_exists('branch_name', $item)) {
+                $record->branch_name = $item['branch_name'];
+            }
+
+            $record->save();
         }
-
-        if (
-            !$isExisting &&
-            (
-                !isset($item['bank_name']) || $item['bank_name'] === '' ||
-                !isset($item['account_number']) || $item['account_number'] === '' ||
-                !isset($item['ifsc_code']) || $item['ifsc_code'] === ''
-            )
-        ) {
-            continue;
-        }
-
-        $record->employee_id = $employee->id;
-
-        if (array_key_exists('bank_name', $item)) {
-            $record->bank_name = $item['bank_name'];
-        }
-
-        if (array_key_exists('account_number', $item)) {
-            $record->account_number = $item['account_number'];
-        }
-
-        if (array_key_exists('ifsc_code', $item) && $item['ifsc_code'] !== null && $item['ifsc_code'] !== '') {
-            $record->ifsc_code = $item['ifsc_code'];
-        }
-
-        if (array_key_exists('branch_name', $item)) {
-            $record->branch_name = $item['branch_name'];
-        }
-
-        $record->save();
-    }
-}
-
-   private function syncPayrolls(Request $request, Employee $employee): void
-{
-    if (!$request->has('payrolls')) {
-        return;
     }
 
-    $payrolls = $request->input('payrolls', []);
+    private function syncPayrolls(Request $request, Employee $employee): void
+    {
+        if (!$request->has('payrolls')) {
+            return;
+        }
 
-    // 🔥 STEP 1: Delete missing payrolls
-    $existingIds = $employee->payrolls()->pluck('id')->toArray();
+        $payrolls = $request->input('payrolls', []);
 
-    $incomingIds = collect($payrolls)
-        ->pluck('id')
-        ->filter()
-        ->toArray();
+        // 🔥 STEP 1: Delete missing payrolls
+        $existingIds = $employee->payrolls()->pluck('id')->toArray();
 
-    $idsToDelete = array_diff($existingIds, $incomingIds);
+        $incomingIds = collect($payrolls)
+            ->pluck('id')
+            ->filter()
+            ->toArray();
 
-    if (!empty($idsToDelete)) {
-        $employee->payrolls()->whereIn('id', $idsToDelete)->delete();
-    }
+        $idsToDelete = array_diff($existingIds, $incomingIds);
 
-    // 🔄 STEP 2: Update / Create
-    foreach ($payrolls as $item) {
-        $isExisting = isset($item['id']);
+        if (!empty($idsToDelete)) {
+            $employee->payrolls()->whereIn('id', $idsToDelete)->delete();
+        }
 
-        $record = $isExisting
-            ? EmployeePayroll::where('id', $item['id'])
+        // 🔄 STEP 2: Update / Create
+        foreach ($payrolls as $item) {
+            $isExisting = isset($item['id']);
+
+            $record = $isExisting
+                ? EmployeePayroll::where('id', $item['id'])
                 ->where('employee_id', $employee->id)
                 ->first()
-            : new EmployeePayroll();
+                : new EmployeePayroll();
 
-        if (!$record) {
-            continue;
-        }
+            if (!$record) {
+                continue;
+            }
 
-        if (!$isExisting && !isset($item['basic_salary'])) {
-            continue;
-        }
+            if (!$isExisting && !isset($item['basic_salary'])) {
+                continue;
+            }
 
-        $record->employee_id = $employee->id;
+            $record->employee_id = $employee->id;
 
-        if (array_key_exists('basic_salary', $item)) {
-            $record->basic_salary = $item['basic_salary'];
-        }
-        if (array_key_exists('hra', $item)) {
-            $record->hra = $item['hra'];
-        }
-        if (array_key_exists('conveyance_allowance', $item)) {
-            $record->conveyance_allowance = $item['conveyance_allowance'];
-        }
-        if (array_key_exists('medical_allowance', $item)) {
-            $record->medical_allowance = $item['medical_allowance'];
-        }
+            if (array_key_exists('basic_salary', $item)) {
+                $record->basic_salary = $item['basic_salary'];
+            }
+            if (array_key_exists('hra', $item)) {
+                $record->hra = $item['hra'];
+            }
+            if (array_key_exists('conveyance_allowance', $item)) {
+                $record->conveyance_allowance = $item['conveyance_allowance'];
+            }
+            if (array_key_exists('medical_allowance', $item)) {
+                $record->medical_allowance = $item['medical_allowance'];
+            }
 
-        $record->save();
-    }
-}
-
-private function syncQualifications(Request $request, Employee $employee): void
-{
-    if (!$request->has('qualifications')) {
-        return;
+            $record->save();
+        }
     }
 
-    $qualifications = $request->input('qualifications', []);
+    private function syncQualifications(Request $request, Employee $employee): void
+    {
+        if (!$request->has('qualifications')) {
+            return;
+        }
 
-    // 🔥 STEP 1: Delete missing qualifications
-    $existingIds = $employee->qualifications()->pluck('id')->toArray();
+        $qualifications = $request->input('qualifications', []);
 
-    $incomingIds = collect($qualifications)
-        ->pluck('id')
-        ->filter()
-        ->toArray();
+        // 🔥 STEP 1: Delete missing qualifications
+        $existingIds = $employee->qualifications()->pluck('id')->toArray();
 
-    $idsToDelete = array_diff($existingIds, $incomingIds);
+        $incomingIds = collect($qualifications)
+            ->pluck('id')
+            ->filter()
+            ->toArray();
 
-    if (!empty($idsToDelete)) {
-        $employee->qualifications()->whereIn('id', $idsToDelete)->delete();
-    }
+        $idsToDelete = array_diff($existingIds, $incomingIds);
 
-    // 🔄 STEP 2: Update / Create
-    foreach ($qualifications as $item) {
-        $isExisting = isset($item['id']);
+        if (!empty($idsToDelete)) {
+            $employee->qualifications()->whereIn('id', $idsToDelete)->delete();
+        }
 
-        $record = $isExisting
-            ? EmployeeQualification::where('id', $item['id'])
+        // 🔄 STEP 2: Update / Create
+        foreach ($qualifications as $item) {
+            $isExisting = isset($item['id']);
+
+            $record = $isExisting
+                ? EmployeeQualification::where('id', $item['id'])
                 ->where('employee_id', $employee->id)
                 ->first()
-            : new EmployeeQualification();
+                : new EmployeeQualification();
 
-        if (!$record) {
-            continue;
-        }
+            if (!$record) {
+                continue;
+            }
 
-        if (
-            !$isExisting &&
-            (
-                !isset($item['degree']) || $item['degree'] === '' ||
-                !isset($item['institution']) || $item['institution'] === ''
-            )
-        ) {
-            continue;
-        }
+            if (
+                !$isExisting &&
+                (
+                    !isset($item['degree']) || $item['degree'] === '' ||
+                    !isset($item['institution']) || $item['institution'] === ''
+                )
+            ) {
+                continue;
+            }
 
-        $record->employee_id = $employee->id;
+            $record->employee_id = $employee->id;
 
-        if (array_key_exists('degree', $item)) {
-            $record->degree = $item['degree'];
-        }
-        if (array_key_exists('institution', $item)) {
-            $record->institution = $item['institution'];
-        }
-        if (array_key_exists('passing_year', $item)) {
-            $record->passing_year = $item['passing_year'];
-        }
-        if (array_key_exists('grade', $item)) {
-            $record->grade = $item['grade'];
-        }
+            if (array_key_exists('degree', $item)) {
+                $record->degree = $item['degree'];
+            }
+            if (array_key_exists('institution', $item)) {
+                $record->institution = $item['institution'];
+            }
+            if (array_key_exists('passing_year', $item)) {
+                $record->passing_year = $item['passing_year'];
+            }
+            if (array_key_exists('grade', $item)) {
+                $record->grade = $item['grade'];
+            }
 
-        $record->save();
+            $record->save();
+        }
     }
-}
 
     private function syncAddresses(Request $request, Employee $employee): void
-{
-    if (!$request->has('addresses')) {
-        return;
-    }
+    {
+        if (!$request->has('addresses')) {
+            return;
+        }
 
-    $addresses = $request->input('addresses', []);
+        $addresses = $request->input('addresses', []);
 
-    // 🔥 STEP 1: Delete missing addresses
-    $existingIds = $employee->addresses()->pluck('id')->toArray();
+        // 🔥 STEP 1: Delete missing addresses
+        $existingIds = $employee->addresses()->pluck('id')->toArray();
 
-    $incomingIds = collect($addresses)
-        ->pluck('id')
-        ->filter()
-        ->toArray();
+        $incomingIds = collect($addresses)
+            ->pluck('id')
+            ->filter()
+            ->toArray();
 
-    $idsToDelete = array_diff($existingIds, $incomingIds);
+        $idsToDelete = array_diff($existingIds, $incomingIds);
 
-    if (!empty($idsToDelete)) {
-        $employee->addresses()->whereIn('id', $idsToDelete)->delete();
-    }
+        if (!empty($idsToDelete)) {
+            $employee->addresses()->whereIn('id', $idsToDelete)->delete();
+        }
 
-    // 🔄 STEP 2: Update / Create (tumhara existing logic)
-    foreach ($addresses as $item) {
-        $isExisting = isset($item['id']);
+        // 🔄 STEP 2: Update / Create (tumhara existing logic)
+        foreach ($addresses as $item) {
+            $isExisting = isset($item['id']);
 
-        $record = $isExisting
-            ? EmployeeAddress::where('id', $item['id'])
+            $record = $isExisting
+                ? EmployeeAddress::where('id', $item['id'])
                 ->where('employee_id', $employee->id)
                 ->first()
-            : new EmployeeAddress();
+                : new EmployeeAddress();
 
-        if (!$record) {
-            continue;
-        }
-
-        if (
-            !$isExisting &&
-            (
-                !isset($item['address_type']) || $item['address_type'] === '' ||
-                !isset($item['city']) || $item['city'] === '' ||
-                !isset($item['state']) || $item['state'] === '' ||
-                !isset($item['postal_code']) || $item['postal_code'] === '' ||
-                !isset($item['country']) || $item['country'] === ''
-            )
-        ) {
-            continue;
-        }
-
-        $record->employee_id = $employee->id;
-
-        if (array_key_exists('address_type', $item)) {
-            $record->address_type = $item['address_type'];
-        }
-        if (array_key_exists('street_address', $item)) {
-            $record->street_address = $item['street_address'];
-        }
-        if (array_key_exists('city', $item)) {
-            $record->city = $item['city'];
-        }
-        if (array_key_exists('state', $item)) {
-            $record->state = $item['state'];
-        }
-        if (array_key_exists('postal_code', $item)) {
-            $record->postal_code = $item['postal_code'];
-        }
-        if (array_key_exists('country', $item)) {
-            $record->country = $item['country'];
-        }
-
-        $record->save();
-    }
-}
-
-   private function syncDocuments(Request $request, Employee $employee): void
-{
-    if (!$request->has('documents')) {
-        return;
-    }
-
-    $documents = $request->input('documents', []);
-
-    // 🔥 STEP 1: Delete missing documents
-    $existingIds = $employee->documents()->pluck('id')->toArray();
-
-    $incomingIds = collect($documents)
-        ->pluck('id')
-        ->filter()
-        ->toArray();
-
-    $idsToDelete = array_diff($existingIds, $incomingIds);
-
-    if (!empty($idsToDelete)) {
-        $docsToDelete = $employee->documents()->whereIn('id', $idsToDelete)->get();
-
-        foreach ($docsToDelete as $doc) {
-            if ($doc->file && Storage::disk('public')->exists($doc->file)) {
-                Storage::disk('public')->delete($doc->file);
+            if (!$record) {
+                continue;
             }
 
-            $doc->delete();
-        }
-    }
-
-    // 🔄 STEP 2: Update / Create (tumhara existing code)
-    foreach ($documents as $index => $item) {
-        $isExisting = isset($item['id']);
-
-        $record = $isExisting
-            ? EmployeeDocuments::where('id', $item['id'])
-                ->where('employee_id', $employee->id)
-                ->first()
-            : new EmployeeDocuments();
-
-        if (!$record) {
-            continue;
-        }
-
-        if (!$isExisting && (!isset($item['document_type']) || $item['document_type'] === '')) {
-            continue;
-        }
-
-        $record->employee_id = $employee->id;
-
-        if (array_key_exists('document_type', $item)) {
-            $record->document_type = $item['document_type'];
-        }
-
-        $documentFile = $request->file("documents.$index.file");
-
-        if ($documentFile) {
-            if ($record->file && Storage::disk('public')->exists($record->file)) {
-                Storage::disk('public')->delete($record->file);
+            if (
+                !$isExisting &&
+                (
+                    !isset($item['address_type']) || $item['address_type'] === '' ||
+                    !isset($item['city']) || $item['city'] === '' ||
+                    !isset($item['state']) || $item['state'] === '' ||
+                    !isset($item['postal_code']) || $item['postal_code'] === '' ||
+                    !isset($item['country']) || $item['country'] === ''
+                )
+            ) {
+                continue;
             }
 
-            $record->file = $documentFile->store('employees/documents', 'public');
+            $record->employee_id = $employee->id;
+
+            if (array_key_exists('address_type', $item)) {
+                $record->address_type = $item['address_type'];
+            }
+            if (array_key_exists('street_address', $item)) {
+                $record->street_address = $item['street_address'];
+            }
+            if (array_key_exists('city', $item)) {
+                $record->city = $item['city'];
+            }
+            if (array_key_exists('state', $item)) {
+                $record->state = $item['state'];
+            }
+            if (array_key_exists('postal_code', $item)) {
+                $record->postal_code = $item['postal_code'];
+            }
+            if (array_key_exists('country', $item)) {
+                $record->country = $item['country'];
+            }
+
+            $record->save();
+        }
+    }
+
+    private function syncDocuments(Request $request, Employee $employee): void
+    {
+        if (!$request->has('documents')) {
+            return;
         }
 
-        $record->save();
-    }
-}
+        $documents = $request->input('documents', []);
 
-  private function syncExperiences(Request $request, Employee $employee): void
-{
-    if (!$request->has('experiences')) {
-        return;
-    }
+        // 🔥 STEP 1: Delete missing documents
+        $existingIds = $employee->documents()->pluck('id')->toArray();
 
-    $experiences = $request->input('experiences', []);
+        $incomingIds = collect($documents)
+            ->pluck('id')
+            ->filter()
+            ->toArray();
 
-    // 🔥 STEP 1: Delete missing experiences
-    $existingIds = $employee->experiences()->pluck('id')->toArray();
+        $idsToDelete = array_diff($existingIds, $incomingIds);
 
-    $incomingIds = collect($experiences)
-        ->pluck('id')
-        ->filter()
-        ->toArray();
+        if (!empty($idsToDelete)) {
+            $docsToDelete = $employee->documents()->whereIn('id', $idsToDelete)->get();
 
-    $idsToDelete = array_diff($existingIds, $incomingIds);
+            foreach ($docsToDelete as $doc) {
+                if ($doc->file && Storage::disk('public')->exists($doc->file)) {
+                    Storage::disk('public')->delete($doc->file);
+                }
 
-    if (!empty($idsToDelete)) {
-        $employee->experiences()->whereIn('id', $idsToDelete)->delete();
-    }
+                $doc->delete();
+            }
+        }
 
-    // 🔄 STEP 2: Update / Create
-    foreach ($experiences as $item) {
-        $isExisting = isset($item['id']);
+        // 🔄 STEP 2: Update / Create (tumhara existing code)
+        foreach ($documents as $index => $item) {
+            $isExisting = isset($item['id']);
 
-        $record = $isExisting
-            ? EmployeeExperience::where('id', $item['id'])
+            $record = $isExisting
+                ? EmployeeDocuments::where('id', $item['id'])
                 ->where('employee_id', $employee->id)
                 ->first()
-            : new EmployeeExperience();
+                : new EmployeeDocuments();
 
-        if (!$record) {
-            continue;
-        }
+            if (!$record) {
+                continue;
+            }
 
-        if (
-            !$isExisting &&
-            (
-                !isset($item['company_name']) || $item['company_name'] === '' ||
-                !isset($item['position']) || $item['position'] === '' ||
-                !isset($item['start_date']) || $item['start_date'] === ''
-            )
-        ) {
-            continue;
-        }
+            if (!$isExisting && (!isset($item['document_type']) || $item['document_type'] === '')) {
+                continue;
+            }
 
-        $record->employee_id = $employee->id;
+            $record->employee_id = $employee->id;
 
-        if (array_key_exists('company_name', $item)) {
-            $record->company_name = $item['company_name'];
-        }
-        if (array_key_exists('position', $item)) {
-            $record->position = $item['position'];
-        }
-        if (array_key_exists('start_date', $item)) {
-            $record->start_date = $item['start_date'];
-        }
-        if (array_key_exists('end_date', $item)) {
-            $record->end_date = $item['end_date'];
-        }
+            if (array_key_exists('document_type', $item)) {
+                $record->document_type = $item['document_type'];
+            }
 
-        $record->save();
+            $documentFile = $request->file("documents.$index.file");
+
+            if ($documentFile) {
+                if ($record->file && Storage::disk('public')->exists($record->file)) {
+                    Storage::disk('public')->delete($record->file);
+                }
+
+                $record->file = $documentFile->store('employees/documents', 'public');
+            }
+
+            $record->save();
+        }
     }
-}
+
+    private function syncExperiences(Request $request, Employee $employee): void
+    {
+        if (!$request->has('experiences')) {
+            return;
+        }
+
+        $experiences = $request->input('experiences', []);
+
+        // 🔥 STEP 1: Delete missing experiences
+        $existingIds = $employee->experiences()->pluck('id')->toArray();
+
+        $incomingIds = collect($experiences)
+            ->pluck('id')
+            ->filter()
+            ->toArray();
+
+        $idsToDelete = array_diff($existingIds, $incomingIds);
+
+        if (!empty($idsToDelete)) {
+            $employee->experiences()->whereIn('id', $idsToDelete)->delete();
+        }
+
+        // 🔄 STEP 2: Update / Create
+        foreach ($experiences as $item) {
+            $isExisting = isset($item['id']);
+
+            $record = $isExisting
+                ? EmployeeExperience::where('id', $item['id'])
+                ->where('employee_id', $employee->id)
+                ->first()
+                : new EmployeeExperience();
+
+            if (!$record) {
+                continue;
+            }
+
+            if (
+                !$isExisting &&
+                (
+                    !isset($item['company_name']) || $item['company_name'] === '' ||
+                    !isset($item['position']) || $item['position'] === '' ||
+                    !isset($item['start_date']) || $item['start_date'] === ''
+                )
+            ) {
+                continue;
+            }
+
+            $record->employee_id = $employee->id;
+
+            if (array_key_exists('company_name', $item)) {
+                $record->company_name = $item['company_name'];
+            }
+            if (array_key_exists('position', $item)) {
+                $record->position = $item['position'];
+            }
+            if (array_key_exists('start_date', $item)) {
+                $record->start_date = $item['start_date'];
+            }
+            if (array_key_exists('end_date', $item)) {
+                $record->end_date = $item['end_date'];
+            }
+
+            $record->save();
+        }
+    }
 
     private function transformEmployee(Employee $employee): array
     {
@@ -957,8 +957,7 @@ private function syncQualifications(Request $request, Employee $employee): void
         if (!$payload) {
             return null;
         }
-
-        if (($payload['role'] ?? null) !== 'admin') {
+        if (!in_array($payload['role'] ?? null, ['admin', 'subadmin', 'sub_admin'])) {
             return null;
         }
 
