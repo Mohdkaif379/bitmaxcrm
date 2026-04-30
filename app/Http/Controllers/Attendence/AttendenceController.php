@@ -17,45 +17,44 @@ use Illuminate\Support\Facades\Storage;
 
 class AttendenceController extends Controller
 {
-    public function index(Request $request)
-    {
-        $validated = $request->validate([
-            'filter' => ['nullable', 'in:daily,weekly,monthly,yearly'],
-        ]);
+  public function index(Request $request)
+{
+    $validated = $request->validate([
+        'filter' => ['nullable', 'in:daily,weekly,monthly,yearly'],
+    ]);
 
-        $query = Attendence::with('employee');
-        $filter = $validated['filter'] ?? null;
+    $query = Attendence::with('employee');
+    $filter = $validated['filter'] ?? null;
 
-        if ($filter === 'daily') {
-            $query->whereDate('date', now('Asia/Kolkata')->toDateString());
-        } elseif ($filter === 'weekly') {
-            $start = Carbon::now('Asia/Kolkata')->startOfWeek()->toDateString();
-            $end = Carbon::now('Asia/Kolkata')->endOfWeek()->toDateString();
-            $query->whereBetween('date', [$start, $end]);
-        } elseif ($filter === 'monthly') {
-            $query->whereMonth('date', now('Asia/Kolkata')->month)
-                ->whereYear('date', now('Asia/Kolkata')->year);
-        } elseif ($filter === 'yearly') {
-            $query->whereYear('date', now('Asia/Kolkata')->year);
-        }
-
-        $attendances = $query->latest()->paginate(10);
-        $attendances->getCollection()->transform(
-            fn(Attendence $attendance) => $this->transformAttendance($attendance)
-        );
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Attendances fetched successfully.',
-            'data' => $attendances->items(),
-            'pagination' => [
-                'current_page' => $attendances->currentPage(),
-                'last_page' => $attendances->lastPage(),
-                'per_page' => $attendances->perPage(),
-                'total' => $attendances->total(),
-            ],
-        ]);
+    if ($filter === 'daily') {
+        $query->whereDate('date', now('Asia/Kolkata')->toDateString());
+    } elseif ($filter === 'weekly') {
+        $start = Carbon::now('Asia/Kolkata')->startOfWeek()->toDateString();
+        $end = Carbon::now('Asia/Kolkata')->endOfWeek()->toDateString();
+        $query->whereBetween('date', [$start, $end]);
+    } elseif ($filter === 'monthly') {
+        $query->whereMonth('date', now('Asia/Kolkata')->month)
+              ->whereYear('date', now('Asia/Kolkata')->year);
+    } elseif ($filter === 'yearly') {
+        $query->whereYear('date', now('Asia/Kolkata')->year);
     }
+
+    // ❌ paginate remove
+    // $attendances = $query->latest()->paginate(10);
+
+    // ✅ get all data
+    $attendances = $query->latest()->get();
+
+    $attendances = $attendances->transform(
+        fn(Attendence $attendance) => $this->transformAttendance($attendance)
+    );
+
+    return response()->json([
+        'status' => true,
+        'message' => 'Attendances fetched successfully.',
+        'data' => $attendances,
+    ]);
+}
 
     public function showByEmployee(int $employeeId)
     {
