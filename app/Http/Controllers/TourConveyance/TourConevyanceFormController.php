@@ -345,7 +345,7 @@ class TourConevyanceFormController extends Controller
             return null;
         }
 
-        if (($payload['role'] ?? null) !== 'admin') {
+        if (!in_array($payload['role'] ?? null, ['admin', 'subadmin', 'sub_admin'])) {
             return null;
         }
 
