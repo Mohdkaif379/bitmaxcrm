@@ -359,13 +359,14 @@ class ExpenseController extends Controller
         }
 
       if (!in_array(($payload['role'] ?? null), ['admin', 'subadmin', 'sub_admin'])) {
-    return null;
-}
+        return null;
+    }
 
         $adminId = (int) ($payload['sub'] ?? 0);
         if ($adminId <= 0) {
             return null;
         }
+        
 
         return Admin::find($adminId);
     }
