@@ -358,9 +358,9 @@ class ExpenseController extends Controller
             return null;
         }
 
-        if (($payload['role'] ?? null) !== 'admin') {
-            return null;
-        }
+      if (!in_array(($payload['role'] ?? null), ['admin', 'subadmin', 'sub_admin'])) {
+    return null;
+}
 
         $adminId = (int) ($payload['sub'] ?? 0);
         if ($adminId <= 0) {
