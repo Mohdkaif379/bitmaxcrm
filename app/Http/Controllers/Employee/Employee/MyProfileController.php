@@ -110,6 +110,7 @@ class MyProfileController extends Controller
             $employee->profile_photo = $request->file('profile_photo')->store('employees/profile_photos', 'public');
         }
 
+
         $employee->save();
 
         // ── Delete documents ───────────────────────────────────────────────────
@@ -131,8 +132,6 @@ class MyProfileController extends Controller
             foreach ($request->input('documents') as $index => $docData) {
                 $docId   = $docData['id'] ?? null;
                 $docType = $docData['document_type'] ?? null;
-
-                // Check if a new file was uploaded for this document index
                 $uploadedFile = $request->file("documents.{$index}.file") ?? null;
 
                 if ($docId) {

