@@ -42,6 +42,14 @@ use App\Http\Controllers\ElasticSearch\ElasticSearchController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+
+use App\Http\Controllers\Api\ChatController;
+use App\Http\Controllers\Api\GroupController;
+use App\Http\Controllers\Api\MessageController;
+
+
+
+
 Route::post('admin/login', [AdminController::class, 'login']);
 Route::post('contact-form/submit', [EmailController::class, 'sendContactForm']);
 Route::post('admin/logout', [AdminController::class, 'logout']);
@@ -217,3 +225,28 @@ Route::put('employee/my-task/status/{taskId}', [MyTaskController::class, 'update
 
 
 Route::post('attendance/mark-leave', [AttendenceController::class, 'markLeaveByEmployee']);
+
+
+
+
+
+
+Route::middleware('auth.jwt')->group(function () {
+
+    // ================= CHAT =================
+    Route::get('/chats', [ChatController::class, 'index']);
+    Route::post('/chats/private', [ChatController::class, 'privateChat']);
+
+    // ================= GROUP =================
+    Route::post('/groups/create', [GroupController::class, 'create']);
+    Route::get('/groups/{id}', [GroupController::class, 'details']);
+    Route::post('/groups/{id}/rename', [GroupController::class, 'rename']);
+    Route::post('/groups/{id}/add-members', [GroupController::class, 'addMembers']);
+    Route::post('/groups/{id}/remove-member', [GroupController::class, 'removeMember']);
+    Route::post('/groups/{id}/leave', [GroupController::class, 'leave']);
+
+    // ================= MESSAGES =================
+    Route::post('/messages/send', [MessageController::class, 'send']);
+    Route::get('/chats/{chatId}/messages', [MessageController::class, 'list']);
+    Route::post('/messages/read', [MessageController::class, 'markRead']);
+});
