@@ -46,6 +46,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\MessageController;
+use App\Http\Controllers\Api\AblyAuthController;
 
 
 
@@ -251,4 +252,11 @@ Route::middleware('jwt.auth')->group(function () {
 
     // GET MESSAGES
     Route::get('/chats/{chatId}/messages', [MessageController::class, 'list']);
+
+    // TYPING INDICATORS
+    Route::post('/messages/typing', [MessageController::class, 'typing']);
+    Route::post('/messages/stop-typing', [MessageController::class, 'stopTyping']);
+
+    // ABLY TOKEN AUTH
+    Route::get('/ably/auth', [AblyAuthController::class, 'token']);
 });
