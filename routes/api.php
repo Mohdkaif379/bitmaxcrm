@@ -230,23 +230,25 @@ Route::post('attendance/mark-leave', [AttendenceController::class, 'markLeaveByE
 
 
 
+Route::middleware('jwt.auth')->group(function () {
 
-Route::middleware('auth.jwt')->group(function () {
-
-    // ================= CHAT =================
-    Route::get('/chats', [ChatController::class, 'index']);
-    Route::post('/chats/private', [ChatController::class, 'privateChat']);
-
-    // ================= GROUP =================
+    // GROUP
     Route::post('/groups/create', [GroupController::class, 'create']);
-    Route::get('/groups/{id}', [GroupController::class, 'details']);
     Route::post('/groups/{id}/rename', [GroupController::class, 'rename']);
     Route::post('/groups/{id}/add-members', [GroupController::class, 'addMembers']);
     Route::post('/groups/{id}/remove-member', [GroupController::class, 'removeMember']);
     Route::post('/groups/{id}/leave', [GroupController::class, 'leave']);
 
-    // ================= MESSAGES =================
+    // PRIVATE CHAT
+    Route::post('/chats/private', [ChatController::class, 'privateChat']);
+
+    // CHAT LIST
+    Route::get('/chats', [ChatController::class, 'index']);
+
+    // MESSAGES
     Route::post('/messages/send', [MessageController::class, 'send']);
-    Route::get('/chats/{chatId}/messages', [MessageController::class, 'list']);
     Route::post('/messages/read', [MessageController::class, 'markRead']);
+
+    // GET MESSAGES
+    Route::get('/chats/{chatId}/messages', [MessageController::class, 'list']);
 });
