@@ -228,7 +228,7 @@ Route::put('employee/my-task/status/{taskId}', [MyTaskController::class, 'update
 Route::post('attendance/mark-leave', [AttendenceController::class, 'markLeaveByEmployee']);
 
 
-
+Route::get('allemployees', [EmployeeDashboardController::class, 'getallemployee']);
 
 
 Route::middleware('jwt.auth')->group(function () {

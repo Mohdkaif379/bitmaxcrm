@@ -167,4 +167,24 @@ class EmployeeDashboardController extends Controller
         $log->user_agent = (string) $request->userAgent();
         $log->save();
     }
+
+
+    public function getallemployee()
+    {
+        $employees = Employee::with([
+            'familyDetails',
+            'bankDetails',
+            'payrolls',
+            'qualifications',
+            'addresses',
+            'documents',
+            'experiences',
+        ])->get();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'All employees fetched successfully.',
+            'data' => $employees,
+        ]);
+    }
 }
