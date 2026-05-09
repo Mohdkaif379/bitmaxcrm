@@ -169,22 +169,32 @@ class EmployeeDashboardController extends Controller
     }
 
 
-    public function getallemployee()
-    {
-        $employees = Employee::with([
-            'familyDetails',
-            'bankDetails',
-            'payrolls',
-            'qualifications',
-            'addresses',
-            'documents',
-            'experiences',
-        ])->get();
+  public function getallemployee(Request $request)
+{
+    $employee = $this->authenticatedEmployeeFromToken($request);
 
+    if (!$employee) {
         return response()->json([
-            'status' => true,
-            'message' => 'All employees fetched successfully.',
-            'data' => $employees,
-        ]);
+            'status' => false,
+            'message' => 'Unauthorized. Valid employee token is required.',
+        ], 401);
     }
+
+    $employees = Employee::with([
+        'familyDetails',
+        'bankDetails',
+        'payrolls',
+        'qualifications',
+        'addresses',
+        'documents',
+        'experiences',
+    ])->get();
+
+    return response()->json([
+        'status' => true,
+        'message' => 'All employees fetched successfully.',
+        'requested_by' => $employee->emp_name,
+        'data' => $employees,
+    ]);
+}
 }
