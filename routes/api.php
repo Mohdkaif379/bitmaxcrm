@@ -239,6 +239,7 @@ Route::middleware('jwt.auth')->group(function () {
     Route::post('/groups/{id}/add-members', [GroupController::class, 'addMembers']);
     Route::post('/groups/{id}/remove-member', [GroupController::class, 'removeMember']);
     Route::post('/groups/{id}/leave', [GroupController::class, 'leave']);
+    Route::delete('/groups/{id}', [GroupController::class, 'delete']);
 
     // PRIVATE CHAT
     Route::post('/chats/private', [ChatController::class, 'privateChat']);

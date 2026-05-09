@@ -106,4 +106,20 @@ class GroupController extends Controller
 
         return response()->json(['message' => 'Left group']);
     }
+
+        // 🔥 DELETE GROUP
+    public function delete($id)
+    {
+        $chat = Chat::findOrFail($id);
+
+        // delete participants
+        ChatParticipant::where('chat_id', $id)->delete();
+
+        // delete group
+        $chat->delete();
+
+        return response()->json([
+            'message' => 'Group deleted'
+        ]);
+    }
 }
