@@ -532,4 +532,84 @@ public function editMessage(Request $request)
         'data' => $message
     ]);
 }
+
+
+
+// 🔥 DELETE MESSAGE
+public function deleteMessage(Request $request)
+{
+    $request->validate([
+        'message_id' => 'required|exists:messages,id'
+    ]);
+
+    // auth user
+    $user = $request->user() ?? $request->auth_admin;
+
+    if (!$user) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Unauthenticated'
+        ], 401);
+    }
+
+    $role = $user->role ?? 'employee';
+
+    // find message
+    $message = Message::find($request->message_id);
+
+    if (!$message) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Message not found'
+        ], 404);
+    }
+
+    // only sender can delete
+    if (
+        $message->sender_id != $user->id ||
+        $message->sender_type != $role
+    ) {
+        return response()->json([
+            'status' => false,
+            'message' => 'You can delete only your own messages'
+        ], 403);
+    }
+
+    // mark as deleted
+    $message->is_deleted = true;
+
+    // optional deleted text
+    $message->message = 'This message was deleted';
+
+    $message->save();
+
+    // 🔥 ABLY REALTIME EVENT
+    try {
+
+        $ably = new AblyService();
+
+        $ably->publishDeleteMessage($message->chat_id, [
+
+            'type' => 'message_deleted',
+
+            'message_id' => $message->id,
+            'chat_id' => $message->chat_id,
+
+            'is_deleted' => true,
+
+            'message' => 'This message was deleted',
+
+            'updated_at' => $message->updated_at->toISOString()
+        ]);
+
+    } catch (\Exception $e) {
+
+        Log::error('Ably delete message failed: ' . $e->getMessage());
+    }
+
+    return response()->json([
+        'status' => true,
+        'message' => 'Message deleted successfully'
+    ]);
+}
 }

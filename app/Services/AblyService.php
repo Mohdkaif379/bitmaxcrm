@@ -76,4 +76,14 @@ class AblyService
         $channel = $this->ably->channels->get("chat:{$chatId}");
         $channel->publish('message-edited', $messageData);
     }
+
+    /**
+     * Publish deleted message
+     */
+    public function publishDeleteMessage(int $chatId, array $messageData): void
+    {
+        $channel = $this->ably->channels->get("chat:{$chatId}");
+
+        $channel->publish('message-deleted', $messageData);
+    }
 }
