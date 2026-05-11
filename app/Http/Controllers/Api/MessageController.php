@@ -106,161 +106,222 @@ class MessageController extends Controller
     // }
 
 
-    public function send(Request $request)
-    {
-        $request->validate([
-            'chat_id' => 'required|exists:chats,id',
-            'message' => 'nullable|string',
-            'message_type' => 'nullable|string',
-            'file' => 'nullable|file|max:10240',
-            'reply_to' => 'nullable|exists:messages,id'
-        ]);
+ public function send(Request $request)
+{
+    $request->validate([
+        'chat_id' => 'required|exists:chats,id',
+        'message' => 'nullable|string',
+        'message_type' => 'nullable|string',
+        'file' => 'nullable|file|max:10240',
+        'reply_to' => 'nullable|exists:messages,id'
+    ]);
 
-        // auth user
-        $user = $request->user() ?? $request->auth_admin;
+    // auth user
+    $user = $request->user() ?? $request->auth_admin;
 
-        if (!$user) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Unauthenticated'
-            ], 401);
-        }
-
-        $role = $user->role ?? 'employee';
-
-        // check participant
-        $participant = ChatParticipant::where('chat_id', $request->chat_id)
-            ->where('user_id', $user->id)
-            ->where('user_type', $role)
-            ->first();
-
-        if (!$participant) {
-            return response()->json([
-                'status' => false,
-                'message' => 'You are not participant of this chat'
-            ], 403);
-        }
-
-        /* =========================
-            FILE UPLOAD
-        ========================= */
-        $filePath = null;
-        $fileName = null;
-        $mimeType = null;
-        $fileSize = null;
-
-        if ($request->hasFile('file')) {
-
-            $file = $request->file('file');
-
-            $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-
-            $filePath = $file->storeAs('chat_files', $fileName, 'public');
-
-            $mimeType = $file->getMimeType();
-
-            $fileSize = $file->getSize();
-        }
-
-        /* =========================
-            CREATE MESSAGE
-        ========================= */
-        $message = Message::create([
-            'chat_id' => $request->chat_id,
-            'sender_id' => $user->id,
-            'sender_type' => $role,
-            'message' => $request->message,
-            'message_type' => $request->message_type ?? ($filePath ? 'file' : 'text'),
-
-            'file' => $filePath,
-            'file_name' => $fileName,
-            'mime_type' => $mimeType,
-            'file_size' => $fileSize,
-
-            'reply_to' => $request->reply_to,
-            'is_forwarded' => false,
-            'is_edited' => false,
-            'is_deleted' => false,
-        ]);
-
-        /* =========================
-            UPDATE CHAT LAST MESSAGE
-        ========================= */
-        Chat::where('id', $request->chat_id)
-            ->update([
-                'last_message_id' => $message->id
-            ]);
-
-        $fileUrl = $filePath ? asset('storage/' . $filePath) : null;
-
-        /* =========================
-            ABLY REALTIME
-        ========================= */
-        try {
-            $ably = new \App\Services\AblyService();
-
-            // broadcast message
-            $ably->publishMessage($request->chat_id, [
-                'id' => $message->id,
-                'chat_id' => $message->chat_id,
-                'sender_id' => $message->sender_id,
-                'sender_type' => $message->sender_type,
-                'sender_name' => $user->full_name ?? $user->emp_name ?? 'Unknown',
-
-                'message' => $message->message,
-                'message_type' => $message->message_type,
-
-                'file_url' => $fileUrl,
-                'file_name' => $message->file_name,
-                'mime_type' => $message->mime_type,
-                'file_size' => $message->file_size,
-
-                'reply_to' => $message->reply_to,
-
-                'created_at' => $message->created_at->toISOString()
-            ]);
-
-            // notify other participants
-            $participants = ChatParticipant::where('chat_id', $request->chat_id)
-                ->where('user_id', '!=', $user->id)
-                ->get();
-
-            foreach ($participants as $p) {
-                $ably->publishToUser($p->user_id, $p->user_type, [
-                    'type' => 'new_message',
-                    'chat_id' => $request->chat_id,
-                    'message_id' => $message->id,
-                    'sender_name' => $user->full_name ?? $user->emp_name ?? 'Unknown',
-                    'preview' => Str::limit($message->message, 50)
-                ]);
-            }
-
-        } catch (\Exception $e) {
-            Log::error('Ably publish failed: ' . $e->getMessage());
-        }
-
-        /* =========================
-            RESPONSE
-        ========================= */
+    if (!$user) {
         return response()->json([
-            'status' => true,
-            'message' => 'Message sent successfully',
-            'data' => [
-                'id' => $message->id,
-                'chat_id' => $message->chat_id,
-                'sender_id' => $message->sender_id,
-                'sender_type' => $message->sender_type,
-                'message' => $message->message,
-                'message_type' => $message->message_type,
-                'file_url' => $fileUrl,
-                'file_name' => $message->file_name,
-                'mime_type' => $message->mime_type,
-                'file_size' => $message->file_size,
-                'reply_to' => $message->reply_to,
-                'created_at' => $message->created_at
-            ]
-        ]);
+            'status' => false,
+            'message' => 'Unauthenticated'
+        ], 401);
     }
+
+    $role = $user->role ?? 'employee';
+
+    // check participant
+    $participant = ChatParticipant::where('chat_id', $request->chat_id)
+        ->where('user_id', $user->id)
+        ->where('user_type', $role)
+        ->first();
+
+    if (!$participant) {
+        return response()->json([
+            'status' => false,
+            'message' => 'You are not participant of this chat'
+        ], 403);
+    }
+
+    /* =========================
+        FILE UPLOAD
+    ========================= */
+
+    $filePath = null;
+    $fileName = null;
+    $mimeType = null;
+    $fileSize = null;
+
+    if ($request->hasFile('file')) {
+
+        $file = $request->file('file');
+
+        $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+
+        $filePath = $file->storeAs('chat_files', $fileName, 'public');
+
+        $mimeType = $file->getMimeType();
+
+        $fileSize = $file->getSize();
+    }
+
+    /* =========================
+        CREATE MESSAGE
+    ========================= */
+
+    $message = Message::create([
+        'chat_id' => $request->chat_id,
+        'sender_id' => $user->id,
+        'sender_type' => $role,
+
+        'message' => $request->message,
+
+        'message_type' => $request->message_type ?? ($filePath ? 'file' : 'text'),
+
+        'file' => $filePath,
+        'file_name' => $fileName,
+        'mime_type' => $mimeType,
+        'file_size' => $fileSize,
+
+        'reply_to' => $request->reply_to,
+
+        'is_forwarded' => false,
+        'is_edited' => false,
+        'is_deleted' => false,
+    ]);
+
+    /* =========================
+        UPDATE LAST MESSAGE
+    ========================= */
+
+    Chat::where('id', $request->chat_id)
+        ->update([
+            'last_message_id' => $message->id
+        ]);
+
+    $fileUrl = $filePath
+        ? asset('storage/' . $filePath)
+        : null;
+
+    /* =========================
+        REPLY MESSAGE DATA
+    ========================= */
+
+    $replyMessage = null;
+
+    if ($message->reply_to) {
+
+        $replyMessage = Message::select(
+                'id',
+                'message',
+                'sender_id',
+                'sender_type',
+                'message_type'
+            )
+            ->find($message->reply_to);
+    }
+
+    /* =========================
+        ABLY REALTIME
+    ========================= */
+
+    try {
+
+        $ably = new AblyService();
+
+        // realtime message broadcast
+        $ably->publishMessage($request->chat_id, [
+
+            'id' => $message->id,
+            'chat_id' => $message->chat_id,
+
+            'sender_id' => $message->sender_id,
+            'sender_type' => $message->sender_type,
+
+            'sender_name' => $user->full_name
+                ?? $user->emp_name
+                ?? 'Unknown',
+
+            'message' => $message->message,
+            'message_type' => $message->message_type,
+
+            'file_url' => $fileUrl,
+            'file_name' => $message->file_name,
+            'mime_type' => $message->mime_type,
+            'file_size' => $message->file_size,
+
+            'reply_to' => $message->reply_to,
+            'reply_message' => $replyMessage,
+
+            'is_edited' => $message->is_edited,
+            'is_deleted' => $message->is_deleted,
+
+            'created_at' => $message->created_at->toISOString()
+        ]);
+
+        // notify other participants
+        $participants = ChatParticipant::where('chat_id', $request->chat_id)
+            ->where('user_id', '!=', $user->id)
+            ->get();
+
+        foreach ($participants as $p) {
+
+            $ably->publishToUser($p->user_id, $p->user_type, [
+
+                'type' => 'new_message',
+
+                'chat_id' => $request->chat_id,
+                'message_id' => $message->id,
+
+                'sender_name' => $user->full_name
+                    ?? $user->emp_name
+                    ?? 'Unknown',
+
+                'preview' => Str::limit(
+                    $message->message ?? 'File',
+                    50
+                )
+            ]);
+        }
+
+    } catch (\Exception $e) {
+
+        Log::error('Ably publish failed: ' . $e->getMessage());
+    }
+
+    /* =========================
+        RESPONSE
+    ========================= */
+
+    return response()->json([
+
+        'status' => true,
+        'message' => 'Message sent successfully',
+
+        'data' => [
+
+            'id' => $message->id,
+            'chat_id' => $message->chat_id,
+
+            'sender_id' => $message->sender_id,
+            'sender_type' => $message->sender_type,
+
+            'message' => $message->message,
+            'message_type' => $message->message_type,
+
+            'file_url' => $fileUrl,
+            'file_name' => $message->file_name,
+            'mime_type' => $message->mime_type,
+            'file_size' => $message->file_size,
+
+            'reply_to' => $message->reply_to,
+            'reply_message' => $replyMessage,
+
+            'is_edited' => $message->is_edited,
+            'is_deleted' => $message->is_deleted,
+
+            'created_at' => $message->created_at
+        ]
+    ]);
+}
 
     // 🔥 GET CHAT MESSAGES
     public function list(Request $request, $chatId)
@@ -289,9 +350,10 @@ class MessageController extends Controller
             ], 403);
         }
 
-        $messages = Message::where('chat_id', $chatId)
-            ->orderBy('id', 'asc')
-            ->get();
+       $messages = Message::with('reply')
+    ->where('chat_id', $chatId)
+    ->orderBy('id', 'asc')
+    ->get();
 
         return response()->json([
             'status' => true,
