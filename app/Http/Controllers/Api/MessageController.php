@@ -395,4 +395,79 @@ class MessageController extends Controller
             'message' => 'Stop typing event sent'
         ]);
     }
+
+
+
+
+    // 🔥 EDIT MESSAGE
+public function editMessage(Request $request)
+{
+    $request->validate([
+        'message_id' => 'required|exists:messages,id',
+        'message' => 'required|string'
+    ]);
+
+    // auth user
+    $user = $request->user() ?? $request->auth_admin;
+
+    if (!$user) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Unauthenticated'
+        ], 401);
+    }
+
+    $role = $user->role ?? 'employee';
+
+    // find message
+    $message = Message::find($request->message_id);
+
+    if (!$message) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Message not found'
+        ], 404);
+    }
+
+    // only sender can edit
+    if (
+        $message->sender_id != $user->id ||
+        $message->sender_type != $role
+    ) {
+        return response()->json([
+            'status' => false,
+            'message' => 'You can edit only your own messages'
+        ], 403);
+    }
+
+    // update message
+    $message->message = $request->message;
+    $message->is_edited = true;
+    $message->save();
+
+    // 🔥 ABLY REALTIME EVENT
+    try {
+
+        $ably = new AblyService();
+
+        $ably->publishMessageEdit($message->chat_id, [
+            'type' => 'message_edited',
+            'message_id' => $message->id,
+            'chat_id' => $message->chat_id,
+            'message' => $message->message,
+            'is_edited' => true,
+            'updated_at' => $message->updated_at->toISOString()
+        ]);
+
+    } catch (\Exception $e) {
+
+        Log::error('Ably edit message failed: ' . $e->getMessage());
+    }
+
+    return response()->json([
+        'status' => true,
+        'message' => 'Message updated successfully',
+        'data' => $message
+    ]);
+}
 }

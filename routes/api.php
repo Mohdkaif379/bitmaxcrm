@@ -260,4 +260,6 @@ Route::middleware('jwt.auth')->group(function () {
 
     // ABLY TOKEN AUTH
     Route::get('/ably/auth', [AblyAuthController::class, 'token']);
+
+    Route::post('/message/edit', [MessageController::class, 'editMessage']);
 });

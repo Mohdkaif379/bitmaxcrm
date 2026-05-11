@@ -67,4 +67,13 @@ class AblyService
             'clientId' => $clientId
         ]);
     }
+
+    /**
+     * Publish edited message
+     */
+    public function publishMessageEdit(int $chatId, array $messageData): void
+    {
+        $channel = $this->ably->channels->get("chat:{$chatId}");
+        $channel->publish('message-edited', $messageData);
+    }
 }
