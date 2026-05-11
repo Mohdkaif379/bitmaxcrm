@@ -536,6 +536,7 @@ public function editMessage(Request $request)
 
 
 // 🔥 DELETE MESSAGE
+// 🔥 DELETE MESSAGE
 public function deleteMessage(Request $request)
 {
     $request->validate([
@@ -575,12 +576,8 @@ public function deleteMessage(Request $request)
         ], 403);
     }
 
-    // mark as deleted
+    // 🔥 only update delete status
     $message->is_deleted = true;
-
-    // optional deleted text
-    $message->message = 'This message was deleted';
-
     $message->save();
 
     // 🔥 ABLY REALTIME EVENT
@@ -596,8 +593,6 @@ public function deleteMessage(Request $request)
             'chat_id' => $message->chat_id,
 
             'is_deleted' => true,
-
-            'message' => 'This message was deleted',
 
             'updated_at' => $message->updated_at->toISOString()
         ]);
