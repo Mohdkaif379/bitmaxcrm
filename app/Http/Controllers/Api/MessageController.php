@@ -299,24 +299,17 @@ class MessageController extends Controller
         $senderName = $user->full_name ?? $user->emp_name ?? 'Unknown';
         $messagePreview = Str::limit($message->message ?? 'File attachment', 50);
 
-        $projectId = env('FIREBASE_PROJECT_ID');
-        $clientEmail = env('FIREBASE_CLIENT_EMAIL');
-        $privateKey = env('FIREBASE_PRIVATE_KEY');
+        $credentialsPath = base_path(env('FIREBASE_CREDENTIALS', 'storage/app/firebase/firebase_credentials.json'));
 
-        if ($projectId && $clientEmail && $privateKey) {
-            // Fix newlines if needed
-            $privateKey = str_replace('\n', "\n", $privateKey);
-            $privateKey = trim($privateKey, '"');
-            $privateKey = str_replace('\n', "\n", $privateKey);
+        if (file_exists($credentialsPath)) {
+            $json = json_decode(file_get_contents($credentialsPath), true);
+            $projectId = $json['project_id'] ?? null;
 
-            $credentials = new ServiceAccountCredentials(
-                'https://www.googleapis.com/auth/firebase.messaging',
-                [
-                    'client_email' => $clientEmail,
-                    'private_key' => $privateKey,
-                    'project_id' => $projectId,
-                ]
-            );
+            if ($projectId) {
+                $credentials = new ServiceAccountCredentials(
+                    'https://www.googleapis.com/auth/firebase.messaging',
+                    $credentialsPath
+                );
 
             // fetch the access token
             $tokenData = $credentials->fetchAuthToken();
