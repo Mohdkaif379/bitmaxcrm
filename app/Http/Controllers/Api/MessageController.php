@@ -295,6 +295,7 @@ class MessageController extends Controller
     /* =========================
         FIREBASE PUSH NOTIFICATIONS
     ========================= */
+    $fcmResults = [];
     try {
         $senderName = $user->full_name ?? $user->emp_name ?? 'Unknown';
         $messagePreview = Str::limit($message->message ?? 'File attachment', 50);
@@ -305,25 +306,30 @@ class MessageController extends Controller
         Log::info('[FCM] File exists: ' . (file_exists($credentialsPath) ? 'YES' : 'NO'));
         Log::info('[FCM] Participants count: ' . count($participants));
 
-        if (file_exists($credentialsPath)) {
-            $json = json_decode(file_get_contents($credentialsPath), true);
+        if (!file_exists($credentialsPath)) {
+            $fcmResults[] = ['error' => 'credentials_file_not_found', 'path' => $credentialsPath];
+        } else {
+            $json      = json_decode(file_get_contents($credentialsPath), true);
             $projectId = $json['project_id'] ?? null;
 
             Log::info('[FCM] Project ID: ' . $projectId);
 
-            if ($projectId) {
+            if (!$projectId) {
+                $fcmResults[] = ['error' => 'project_id_missing_in_credentials'];
+            } else {
                 $credentials = new ServiceAccountCredentials(
                     'https://www.googleapis.com/auth/firebase.messaging',
                     $credentialsPath
                 );
 
-                // fetch the access token
-                $tokenData = $credentials->fetchAuthToken();
+                $tokenData   = $credentials->fetchAuthToken();
                 $accessToken = $tokenData['access_token'] ?? null;
 
                 Log::info('[FCM] Access token fetched: ' . ($accessToken ? 'YES' : 'NO'));
 
-                if ($accessToken) {
+                if (!$accessToken) {
+                    $fcmResults[] = ['error' => 'failed_to_fetch_access_token'];
+                } else {
                     foreach ($participants as $p) {
                         $participantUser = $p->user_type === 'admin'
                             ? \App\Models\Admin::find($p->user_id)
@@ -332,34 +338,49 @@ class MessageController extends Controller
                         Log::info('[FCM] Participant user_id: ' . $p->user_id . ' | user_type: ' . $p->user_type);
                         Log::info('[FCM] FCM Token: ' . ($participantUser->fcm_token ?? 'NULL'));
 
-                        if ($participantUser && $participantUser->fcm_token) {
-                            $payload = [
-                                'message' => [
-                                    'token' => $participantUser->fcm_token,
-                                    'notification' => [
-                                        'title' => "New Message from {$senderName}",
-                                        'body' => $messagePreview,
-                                    ],
-                                    'data' => [
-                                        'chat_id' => (string)$request->chat_id,
-                                        'message_id' => (string)$message->id,
-                                        'type' => 'new_message'
-                                    ]
-                                ]
+                        if (!$participantUser || !$participantUser->fcm_token) {
+                            $fcmResults[] = [
+                                'user_id'   => $p->user_id,
+                                'user_type' => $p->user_type,
+                                'error'     => 'fcm_token_not_found',
                             ];
-
-                            $response = Http::withToken($accessToken)
-                                ->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", $payload);
-
-                            Log::info('[FCM] Response status: ' . $response->status());
-                            Log::info('[FCM] Response body: ' . $response->body());
+                            continue;
                         }
+
+                        $payload = [
+                            'message' => [
+                                'token'        => $participantUser->fcm_token,
+                                'notification' => [
+                                    'title' => "New Message from {$senderName}",
+                                    'body'  => $messagePreview,
+                                ],
+                                'data' => [
+                                    'chat_id'    => (string)$request->chat_id,
+                                    'message_id' => (string)$message->id,
+                                    'type'       => 'new_message',
+                                ],
+                            ],
+                        ];
+
+                        $fcmResponse = Http::withToken($accessToken)
+                            ->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", $payload);
+
+                        Log::info('[FCM] Response status: ' . $fcmResponse->status());
+                        Log::info('[FCM] Response body: '   . $fcmResponse->body());
+
+                        $fcmResults[] = [
+                            'user_id'        => $p->user_id,
+                            'user_type'      => $p->user_type,
+                            'fcm_status'     => $fcmResponse->status(),
+                            'fcm_response'   => $fcmResponse->json(),
+                        ];
                     }
                 }
             }
         }
     } catch (\Exception $e) {
         Log::error('[FCM] Firebase push notification failed: ' . $e->getMessage());
+        $fcmResults[] = ['error' => $e->getMessage()];
     }
 
     /* =========================
@@ -368,33 +389,35 @@ class MessageController extends Controller
 
     return response()->json([
 
-        'status' => true,
+        'status'  => true,
         'message' => 'Message sent successfully',
 
         'data' => [
 
-            'id' => $message->id,
-            'chat_id' => $message->chat_id,
+            'id'          => $message->id,
+            'chat_id'     => $message->chat_id,
 
-            'sender_id' => $message->sender_id,
+            'sender_id'   => $message->sender_id,
             'sender_type' => $message->sender_type,
 
-            'message' => $message->message,
+            'message'      => $message->message,
             'message_type' => $message->message_type,
 
-            'file_url' => $fileUrl,
+            'file_url'  => $fileUrl,
             'file_name' => $message->file_name,
             'mime_type' => $message->mime_type,
             'file_size' => $message->file_size,
 
-            'reply_to' => $message->reply_to,
+            'reply_to'      => $message->reply_to,
             'reply_message' => $replyMessage,
 
-            'is_edited' => $message->is_edited,
+            'is_edited'  => $message->is_edited,
             'is_deleted' => $message->is_deleted,
 
-            'created_at' => $message->created_at
-        ]
+            'created_at' => $message->created_at,
+        ],
+
+        'fcm_debug' => $fcmResults,
     ]);
 }
 
