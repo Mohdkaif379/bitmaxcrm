@@ -301,9 +301,15 @@ class MessageController extends Controller
 
         $credentialsPath = base_path(env('FIREBASE_CREDENTIALS', 'storage/app/firebase/firebase_credentials.json'));
 
+        Log::info('[FCM] Credentials path: ' . $credentialsPath);
+        Log::info('[FCM] File exists: ' . (file_exists($credentialsPath) ? 'YES' : 'NO'));
+        Log::info('[FCM] Participants count: ' . count($participants));
+
         if (file_exists($credentialsPath)) {
             $json = json_decode(file_get_contents($credentialsPath), true);
             $projectId = $json['project_id'] ?? null;
+
+            Log::info('[FCM] Project ID: ' . $projectId);
 
             if ($projectId) {
                 $credentials = new ServiceAccountCredentials(
@@ -311,40 +317,49 @@ class MessageController extends Controller
                     $credentialsPath
                 );
 
-            // fetch the access token
-            $tokenData = $credentials->fetchAuthToken();
-            $accessToken = $tokenData['access_token'] ?? null;
+                // fetch the access token
+                $tokenData = $credentials->fetchAuthToken();
+                $accessToken = $tokenData['access_token'] ?? null;
 
-            if ($accessToken) {
-                foreach ($participants as $p) {
-                    $participantUser = $p->user_type === 'admin' 
-                        ? \App\Models\Admin::find($p->user_id) 
-                        : \App\Models\Employee::find($p->user_id);
+                Log::info('[FCM] Access token fetched: ' . ($accessToken ? 'YES' : 'NO'));
 
-                    if ($participantUser && $participantUser->fcm_token) {
-                        $payload = [
-                            'message' => [
-                                'token' => $participantUser->fcm_token,
-                                'notification' => [
-                                    'title' => "New Message from {$senderName}",
-                                    'body' => $messagePreview,
-                                ],
-                                'data' => [
-                                    'chat_id' => (string)$request->chat_id,
-                                    'message_id' => (string)$message->id,
-                                    'type' => 'new_message'
+                if ($accessToken) {
+                    foreach ($participants as $p) {
+                        $participantUser = $p->user_type === 'admin'
+                            ? \App\Models\Admin::find($p->user_id)
+                            : \App\Models\Employee::find($p->user_id);
+
+                        Log::info('[FCM] Participant user_id: ' . $p->user_id . ' | user_type: ' . $p->user_type);
+                        Log::info('[FCM] FCM Token: ' . ($participantUser->fcm_token ?? 'NULL'));
+
+                        if ($participantUser && $participantUser->fcm_token) {
+                            $payload = [
+                                'message' => [
+                                    'token' => $participantUser->fcm_token,
+                                    'notification' => [
+                                        'title' => "New Message from {$senderName}",
+                                        'body' => $messagePreview,
+                                    ],
+                                    'data' => [
+                                        'chat_id' => (string)$request->chat_id,
+                                        'message_id' => (string)$message->id,
+                                        'type' => 'new_message'
+                                    ]
                                 ]
-                            ]
-                        ];
-                        
-                        Http::withToken($accessToken)
-                            ->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", $payload);
+                            ];
+
+                            $response = Http::withToken($accessToken)
+                                ->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", $payload);
+
+                            Log::info('[FCM] Response status: ' . $response->status());
+                            Log::info('[FCM] Response body: ' . $response->body());
+                        }
                     }
                 }
             }
         }
     } catch (\Exception $e) {
-        Log::error('Firebase push notification failed: ' . $e->getMessage());
+        Log::error('[FCM] Firebase push notification failed: ' . $e->getMessage());
     }
 
     /* =========================
