@@ -1,4 +1,5 @@
 *.log
+.env
 .DS_Store
 .env.backup
 .phpactor.json
@@ -20,9 +21,6 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 config.bat
-<<<<<<< HEAD
-=======
 temp_auto_push.bat
 temp_interactive_push.bat
 .gitignore
->>>>>>> 6e41b9f7fc917cfebe4ef583fd9644f2c058b3aa
