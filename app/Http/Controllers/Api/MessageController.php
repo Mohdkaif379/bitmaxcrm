@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\Message;
 use App\Models\Chat;
 use App\Models\ChatParticipant;
+use App\Models\DeviceToken;
 use App\Services\AblyService;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
@@ -221,6 +222,14 @@ class MessageController extends Controller
             ->find($message->reply_to);
     }
 
+    // notify other participants
+    $participants = ChatParticipant::where('chat_id', $request->chat_id)
+        ->where(function ($query) use ($user, $role) {
+            $query->where('user_id', '!=', $user->id)
+                  ->orWhere('user_type', '!=', $role);
+        })
+        ->get();
+
     /* =========================
         ABLY REALTIME
     ========================= */
@@ -258,14 +267,6 @@ class MessageController extends Controller
 
             'created_at' => $message->created_at->toISOString()
         ]);
-
-        // notify other participants
-        $participants = ChatParticipant::where('chat_id', $request->chat_id)
-            ->where(function ($query) use ($user, $role) {
-                $query->where('user_id', '!=', $user->id)
-                      ->orWhere('user_type', '!=', $role);
-            })
-            ->get();
 
         foreach ($participants as $p) {
 
@@ -336,7 +337,6 @@ class MessageController extends Controller
                             : \App\Models\Employee::find($p->user_id);
 
                         Log::info('[FCM] Participant user_id: ' . $p->user_id . ' | user_type: ' . $p->user_type);
-                        Log::info('[FCM] FCM Token: ' . ($participantUser->fcm_token ?? 'NULL'));
 
                         if (!$participantUser) {
                             $fcmResults[] = [
@@ -347,7 +347,23 @@ class MessageController extends Controller
                             continue;
                         }
 
-                        if (!$participantUser->fcm_token) {
+                        $fcmTokens = DeviceToken::where('user_type', $p->user_type)
+                            ->where('user_id', $p->user_id)
+                            ->where('is_active', true)
+                            ->orderByDesc('last_used_at')
+                            ->pluck('fcm_token')
+                            ->filter()
+                            ->unique()
+                            ->values()
+                            ->all();
+
+                        if (empty($fcmTokens) && !empty($participantUser->fcm_token)) {
+                            $fcmTokens = [$participantUser->fcm_token];
+                        }
+
+                        Log::info('[FCM] Active token count: ' . count($fcmTokens));
+
+                        if (empty($fcmTokens)) {
                             $fcmResults[] = [
                                 'user_id'   => $p->user_id,
                                 'user_type' => $p->user_type,
@@ -356,33 +372,37 @@ class MessageController extends Controller
                             continue;
                         }
 
-                        $payload = [
-                            'message' => [
-                                'token'        => $participantUser->fcm_token,
-                                'notification' => [
-                                    'title' => "New Message from {$senderName}",
-                                    'body'  => $messagePreview,
+                        foreach ($fcmTokens as $tokenIndex => $fcmToken) {
+                            $payload = [
+                                'message' => [
+                                    'token'        => $fcmToken,
+                                    'notification' => [
+                                        'title' => "New Message from {$senderName}",
+                                        'body'  => $messagePreview,
+                                    ],
+                                    'data' => [
+                                        'chat_id'    => (string)$request->chat_id,
+                                        'message_id' => (string)$message->id,
+                                        'type'       => 'new_message',
+                                    ],
                                 ],
-                                'data' => [
-                                    'chat_id'    => (string)$request->chat_id,
-                                    'message_id' => (string)$message->id,
-                                    'type'       => 'new_message',
-                                ],
-                            ],
-                        ];
+                            ];
 
-                        $fcmResponse = Http::withToken($accessToken)
-                            ->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", $payload);
+                            $fcmResponse = Http::withToken($accessToken)
+                                ->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", $payload);
 
-                        Log::info('[FCM] Response status: ' . $fcmResponse->status());
-                        Log::info('[FCM] Response body: '   . $fcmResponse->body());
+                            Log::info('[FCM] Response status: ' . $fcmResponse->status());
+                            Log::info('[FCM] Response body: '   . $fcmResponse->body());
 
-                        $fcmResults[] = [
-                            'user_id'        => $p->user_id,
-                            'user_type'      => $p->user_type,
-                            'fcm_status'     => $fcmResponse->status(),
-                            'fcm_response'   => $fcmResponse->json(),
-                        ];
+                            $fcmResults[] = [
+                                'user_id'        => $p->user_id,
+                                'user_type'      => $p->user_type,
+                                'token_index'    => $tokenIndex,
+                                'token_count'    => count($fcmTokens),
+                                'fcm_status'     => $fcmResponse->status(),
+                                'fcm_response'   => $fcmResponse->json(),
+                            ];
+                        }
                     }
                 }
             }
