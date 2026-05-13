@@ -338,11 +338,20 @@ class MessageController extends Controller
                         Log::info('[FCM] Participant user_id: ' . $p->user_id . ' | user_type: ' . $p->user_type);
                         Log::info('[FCM] FCM Token: ' . ($participantUser->fcm_token ?? 'NULL'));
 
-                        if (!$participantUser || !$participantUser->fcm_token) {
+                        if (!$participantUser) {
                             $fcmResults[] = [
                                 'user_id'   => $p->user_id,
                                 'user_type' => $p->user_type,
-                                'error'     => 'fcm_token_not_found',
+                                'error'     => 'user_not_found_in_db',
+                            ];
+                            continue;
+                        }
+
+                        if (!$participantUser->fcm_token) {
+                            $fcmResults[] = [
+                                'user_id'   => $p->user_id,
+                                'user_type' => $p->user_type,
+                                'error'     => 'fcm_token_empty_in_db',
                             ];
                             continue;
                         }
