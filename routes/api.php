@@ -47,6 +47,7 @@ use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\AblyAuthController;
+use App\Http\Controllers\Api\DeviceTokenController;
 
 
 
@@ -240,28 +241,23 @@ Route::middleware('jwt.auth')->group(function () {
     Route::post('/groups/{id}/remove-member', [GroupController::class, 'removeMember']);
     Route::post('/groups/{id}/leave', [GroupController::class, 'leave']);
     Route::delete('/groups/{id}', [GroupController::class, 'delete']);
-
     // PRIVATE CHAT
     Route::post('/chats/private', [ChatController::class, 'privateChat']);
-
     // CHAT LIST
     Route::get('/chats', [ChatController::class, 'index']);
-
     // MESSAGES
     Route::post('/messages/send', [MessageController::class, 'send']);
     Route::post('/messages/read', [MessageController::class, 'markRead']);
-
     // GET MESSAGES
     Route::get('/chats/{chatId}/messages', [MessageController::class, 'list']);
-
     // TYPING INDICATORS
     Route::post('/messages/typing', [MessageController::class, 'typing']);
     Route::post('/messages/stop-typing', [MessageController::class, 'stopTyping']);
-
     // ABLY TOKEN AUTH
     Route::get('/ably/auth', [AblyAuthController::class, 'token']);
-
     Route::post('/message/edit', [MessageController::class, 'editMessage']);
-
     Route::post('/message/delete', [MessageController::class, 'deleteMessage']);
+    
+    // DEVICE TOKEN
+    Route::post('/device-token', [DeviceTokenController::class, 'store']);
 });

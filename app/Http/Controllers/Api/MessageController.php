@@ -10,6 +10,8 @@ use App\Models\ChatParticipant;
 use App\Services\AblyService;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
+use Google\Auth\Credentials\ServiceAccountCredentials;
+use Illuminate\Support\Facades\Http;
 
 class MessageController extends Controller
 {
@@ -259,7 +261,10 @@ class MessageController extends Controller
 
         // notify other participants
         $participants = ChatParticipant::where('chat_id', $request->chat_id)
-            ->where('user_id', '!=', $user->id)
+            ->where(function ($query) use ($user, $role) {
+                $query->where('user_id', '!=', $user->id)
+                      ->orWhere('user_type', '!=', $role);
+            })
             ->get();
 
         foreach ($participants as $p) {
@@ -285,6 +290,68 @@ class MessageController extends Controller
     } catch (\Exception $e) {
 
         Log::error('Ably publish failed: ' . $e->getMessage());
+    }
+
+    /* =========================
+        FIREBASE PUSH NOTIFICATIONS
+    ========================= */
+    try {
+        $senderName = $user->full_name ?? $user->emp_name ?? 'Unknown';
+        $messagePreview = Str::limit($message->message ?? 'File attachment', 50);
+
+        $projectId = env('FIREBASE_PROJECT_ID');
+        $clientEmail = env('FIREBASE_CLIENT_EMAIL');
+        $privateKey = env('FIREBASE_PRIVATE_KEY');
+
+        if ($projectId && $clientEmail && $privateKey) {
+            // Fix newlines if needed
+            $privateKey = str_replace('\n', "\n", $privateKey);
+            $privateKey = trim($privateKey, '"');
+            $privateKey = str_replace('\n', "\n", $privateKey);
+
+            $credentials = new ServiceAccountCredentials(
+                'https://www.googleapis.com/auth/firebase.messaging',
+                [
+                    'client_email' => $clientEmail,
+                    'private_key' => $privateKey,
+                    'project_id' => $projectId,
+                ]
+            );
+
+            // fetch the access token
+            $tokenData = $credentials->fetchAuthToken();
+            $accessToken = $tokenData['access_token'] ?? null;
+
+            if ($accessToken) {
+                foreach ($participants as $p) {
+                    $participantUser = $p->user_type === 'admin' 
+                        ? \App\Models\Admin::find($p->user_id) 
+                        : \App\Models\Employee::find($p->user_id);
+
+                    if ($participantUser && $participantUser->fcm_token) {
+                        $payload = [
+                            'message' => [
+                                'token' => $participantUser->fcm_token,
+                                'notification' => [
+                                    'title' => "New Message from {$senderName}",
+                                    'body' => $messagePreview,
+                                ],
+                                'data' => [
+                                    'chat_id' => (string)$request->chat_id,
+                                    'message_id' => (string)$message->id,
+                                    'type' => 'new_message'
+                                ]
+                            ]
+                        ];
+                        
+                        Http::withToken($accessToken)
+                            ->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", $payload);
+                    }
+                }
+            }
+        }
+    } catch (\Exception $e) {
+        Log::error('Firebase push notification failed: ' . $e->getMessage());
     }
 
     /* =========================

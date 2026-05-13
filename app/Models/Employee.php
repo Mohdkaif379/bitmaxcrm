@@ -21,6 +21,7 @@ class Employee extends Model
         'role',
         'profile_photo',
         'password',
+        'fcm_token',
     ];
 
     public function familyDetails(): HasMany
