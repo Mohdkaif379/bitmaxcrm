@@ -11,48 +11,42 @@ use Illuminate\Support\Facades\Cache;
 
 class StockManagementController extends Controller
 {
-    public function index(Request $request)
-    {
-        $admin = $this->authenticatedAdminFromToken($request);
-        if (!$admin) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Unauthorized. Valid admin token is required.',
-            ], 401);
-        }
-
-        $validated = $request->validate([
-            'search' => ['nullable', 'string', 'max:255'],
-        ]);
-
-        $query = StockManagementModel::query();
-        $search = trim((string) ($validated['search'] ?? ''));
-
-        if ($search !== '') {
-            $query->where(function ($builder) use ($search) {
-                $builder->where('item_name', 'like', '%' . $search . '%')
-                    ->orWhere('description', 'like', '%' . $search . '%')
-                    ->orWhere('unit', 'like', '%' . $search . '%')
-                    ->orWhere('quantity', 'like', '%' . $search . '%')
-                    ->orWhere('price', 'like', '%' . $search . '%')
-                    ->orWhere('total_price', 'like', '%' . $search . '%');
-            });
-        }
-
-        $stocks = $query->latest()->paginate(10);
-
+   public function index(Request $request)
+{
+    $admin = $this->authenticatedAdminFromToken($request);
+    if (!$admin) {
         return response()->json([
-            'status' => true,
-            'message' => 'Stock items fetched successfully.',
-            'data' => $stocks->items(),
-            'pagination' => [
-                'current_page' => $stocks->currentPage(),
-                'last_page' => $stocks->lastPage(),
-                'per_page' => $stocks->perPage(),
-                'total' => $stocks->total(),
-            ],
-        ]);
+            'status' => false,
+            'message' => 'Unauthorized. Valid admin token is required.',
+        ], 401);
     }
+
+    $validated = $request->validate([
+        'search' => ['nullable', 'string', 'max:255'],
+    ]);
+
+    $query = StockManagementModel::query();
+    $search = trim((string) ($validated['search'] ?? ''));
+
+    if ($search !== '') {
+        $query->where(function ($builder) use ($search) {
+            $builder->where('item_name', 'like', '%' . $search . '%')
+                ->orWhere('description', 'like', '%' . $search . '%')
+                ->orWhere('unit', 'like', '%' . $search . '%')
+                ->orWhere('quantity', 'like', '%' . $search . '%')
+                ->orWhere('price', 'like', '%' . $search . '%')
+                ->orWhere('total_price', 'like', '%' . $search . '%');
+        });
+    }
+
+    $stocks = $query->latest()->get();
+
+    return response()->json([
+        'status' => true,
+        'message' => 'Stock items fetched successfully.',
+        'data' => $stocks,
+    ]);
+}
 
     public function store(Request $request)
     {
