@@ -47,7 +47,7 @@ class JwtAuthMiddleware
         $user = null;
 
         // 🔥 Check if Admin token
-        if ($role === 'admin' || $role === 'sub-admin' || isset($payload['email'])) {
+        if ($role === 'admin' || $role === 'sub_admin' || isset($payload['email'])) {
             // Check admin blacklist
             $blacklistKey = 'admin_jwt_blacklist:' . hash('sha256', $token);
             if (Cache::has($blacklistKey)) {
