@@ -313,7 +313,7 @@ class AttendenceController extends Controller
             'break_start' => ['nullable', 'date_format:H:i:s'],
             'break_end' => ['nullable', 'date_format:H:i:s'],
             'profile_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-            'status' => ['nullable', 'in:present,absent,halfday,holiday'],
+            'status' => ['nullable', 'in:present,absent,halfday,holiday,wfh,lwp'],
         ]);
 
         $attendance = Attendence::where('id', $id)
