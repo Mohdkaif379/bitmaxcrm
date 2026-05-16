@@ -15,11 +15,11 @@ class LeadCreateController extends Controller
 {
     public function index(Request $request)
     {
-        $admin = $this->authenticatedAdminFromToken($request);
-        if (!$admin) {
+        $actor = $this->getAuthenticatedActor($request);
+        if (!$actor) {
             return response()->json([
                 'status' => false,
-                'message' => 'Unauthorized. Valid admin or subadmin token is required.',
+                'message' => 'Unauthorized. Valid token is required.',
             ], 401);
         }
 
@@ -75,11 +75,11 @@ class LeadCreateController extends Controller
 
     public function store(Request $request)
     {
-        $admin = $this->authenticatedAdminFromToken($request);
-        if (!$admin) {
+        $actor = $this->getAuthenticatedActor($request);
+        if (!$actor) {
             return response()->json([
                 'status' => false,
-                'message' => 'Unauthorized. Valid admin or subadmin token is required.',
+                'message' => 'Unauthorized. Valid token is required.',
             ], 401);
         }
 
@@ -106,15 +106,15 @@ class LeadCreateController extends Controller
         $lead->date = $validated['date'] ?? null;
         $lead->remarks = $validated['remarks'] ?? null;
         $lead->project_interested = $validated['project_interested'] ?? null;
-        $lead->created_by = $admin->id;
+        $lead->created_by = $actor['type'] === 'admin' ? $actor['model']->id : null;
         $lead->status = $validated['status'] ?? 'active';
         $lead->location = $validated['location'] ?? null;
-        $lead->attended_by = $validated['attended_by'] ?? null;
+        $lead->attended_by = $validated['attended_by'] ?? ($actor['type'] === 'employee' ? $actor['model']->id : null);
         $lead->is_deleted = false;
         $lead->deleted_at = null;
         $lead->save();
-        $this->logLeadCreateAction($request, $admin, $lead, 'create', 'created lead create');
-        $this->createLeadCreateNotification($admin, $lead, 'created');
+        $this->logLeadCreateAction($request, $actor, $lead, 'create', 'created lead create');
+        $this->createLeadCreateNotification($actor, $lead, 'created');
 
         return response()->json([
             'status' => true,
@@ -125,11 +125,11 @@ class LeadCreateController extends Controller
 
     public function show(Request $request, int $id)
     {
-        $admin = $this->authenticatedAdminFromToken($request);
-        if (!$admin) {
+        $actor = $this->getAuthenticatedActor($request);
+        if (!$actor) {
             return response()->json([
                 'status' => false,
-                'message' => 'Unauthorized. Valid admin or subadmin token is required.',
+                'message' => 'Unauthorized. Valid token is required.',
             ], 401);
         }
 
@@ -151,11 +151,11 @@ class LeadCreateController extends Controller
 
     public function update(Request $request, int $id)
     {
-        $admin = $this->authenticatedAdminFromToken($request);
-        if (!$admin) {
+        $actor = $this->getAuthenticatedActor($request);
+        if (!$actor) {
             return response()->json([
                 'status' => false,
-                'message' => 'Unauthorized. Valid admin or subadmin token is required.',
+                'message' => 'Unauthorized. Valid token is required.',
             ], 401);
         }
 
@@ -217,8 +217,8 @@ class LeadCreateController extends Controller
         }
 
         $lead->save();
-        $this->logLeadCreateAction($request, $admin, $lead, 'update', 'updated lead create');
-        $this->createLeadCreateNotification($admin, $lead, 'updated');
+        $this->logLeadCreateAction($request, $actor, $lead, 'update', 'updated lead create');
+        $this->createLeadCreateNotification($actor, $lead, 'updated');
 
         return response()->json([
             'status' => true,
@@ -229,11 +229,11 @@ class LeadCreateController extends Controller
 
     public function destroy(Request $request, int $id)
     {
-        $admin = $this->authenticatedAdminFromToken($request);
-        if (!$admin) {
+        $actor = $this->getAuthenticatedActor($request);
+        if (!$actor) {
             return response()->json([
                 'status' => false,
-                'message' => 'Unauthorized. Valid admin or subadmin token is required.',
+                'message' => 'Unauthorized. Valid token is required.',
             ], 401);
         }
 
@@ -250,8 +250,8 @@ class LeadCreateController extends Controller
         $lead->deleted_at = now();
         $lead->status = 'deleted';
         $lead->save();
-        $this->logLeadDeleteAction($request, $admin, $lead);
-        $this->createLeadCreateNotification($admin, $lead, 'deleted');
+        $this->logLeadDeleteAction($request, $actor, $lead);
+        $this->createLeadCreateNotification($actor, $lead, 'deleted');
 
         return response()->json([
             'status' => true,
@@ -259,7 +259,7 @@ class LeadCreateController extends Controller
         ]);
     }
 
-    private function authenticatedAdminFromToken(Request $request): ?Admin
+    private function getAuthenticatedActor(Request $request): ?array
     {
         $token = $request->bearerToken();
         if (!$token) {
@@ -272,16 +272,22 @@ class LeadCreateController extends Controller
         }
 
         $role = strtolower((string) ($payload['role'] ?? ''));
-        if (!in_array($role, ['admin', 'sub_admin', 'subadmin'], true)) {
+        $actorId = (int) ($payload['sub'] ?? 0);
+        if ($actorId <= 0) {
             return null;
         }
 
-        $adminId = (int) ($payload['sub'] ?? 0);
-        if ($adminId <= 0) {
-            return null;
+        if (in_array($role, ['admin', 'sub_admin', 'subadmin'], true)) {
+            $admin = Admin::find($actorId);
+            return $admin ? ['type' => 'admin', 'model' => $admin] : null;
         }
 
-        return Admin::find($adminId);
+        if ($role === 'employee') {
+            $employee = Employee::find($actorId);
+            return $employee ? ['type' => 'employee', 'model' => $employee] : null;
+        }
+
+        return null;
     }
 
     private function decodeJwtToken(string $token): ?array
@@ -350,22 +356,31 @@ class LeadCreateController extends Controller
 
     private function logLeadCreateAction(
         Request $request,
-        Admin $admin,
+        array $actor,
         Lead_Create $lead,
         string $action,
         string $actionText
     ): void {
-        $adminName = $admin->full_name ?: 'unknown admin';
+        $actorName = $actor['type'] === 'admin' 
+            ? ($actor['model']->full_name ?: 'unknown admin')
+            : ($actor['model']->emp_name ?: 'unknown employee');
+        
         $leadName = $lead->name ?: 'unknown lead create';
 
         $log = new Log();
-        $log->admin_id = $admin->id;
-        $log->employee_id = null;
+        if ($actor['type'] === 'admin') {
+            $log->admin_id = $actor['model']->id;
+            $log->employee_id = null;
+        } else {
+            $log->admin_id = null;
+            $log->employee_id = $actor['model']->id;
+        }
         $log->model = class_basename($lead);
         $log->action = $action;
         $log->description = sprintf(
-            'admin(%s) %s (%s)',
-            $adminName,
+            '%s(%s) %s (%s)',
+            $actor['type'],
+            $actorName,
             $actionText,
             $leadName
         );
@@ -374,19 +389,28 @@ class LeadCreateController extends Controller
         $log->save();
     }
 
-    private function logLeadDeleteAction(Request $request, Admin $admin, Lead_Create $lead): void
+    private function logLeadDeleteAction(Request $request, array $actor, Lead_Create $lead): void
     {
-        $adminName = $admin->full_name ?: 'unknown admin';
+        $actorName = $actor['type'] === 'admin' 
+            ? ($actor['model']->full_name ?: 'unknown admin')
+            : ($actor['model']->emp_name ?: 'unknown employee');
+
         $leadName = $lead->name ?: 'unknown lead create';
 
         $log = new Log();
-        $log->admin_id = $admin->id;
-        $log->employee_id = null;
+        if ($actor['type'] === 'admin') {
+            $log->admin_id = $actor['model']->id;
+            $log->employee_id = null;
+        } else {
+            $log->admin_id = null;
+            $log->employee_id = $actor['model']->id;
+        }
         $log->model = class_basename(Lead_Create::class);
         $log->action = 'delete';
         $log->description = sprintf(
-            'admin(%s) deleted lead create (%s)',
-            $adminName,
+            '%s(%s) deleted lead create (%s)',
+            $actor['type'],
+            $actorName,
             $leadName
         );
         $log->ip_address = $request->ip();
@@ -394,18 +418,27 @@ class LeadCreateController extends Controller
         $log->save();
     }
 
-    private function createLeadCreateNotification(Admin $admin, Lead_Create $lead, string $action): void
+    private function createLeadCreateNotification(array $actor, Lead_Create $lead, string $action): void
     {
-        $adminName = $admin->full_name ?: 'unknown admin';
+        $actorName = $actor['type'] === 'admin' 
+            ? ($actor['model']->full_name ?: 'unknown admin')
+            : ($actor['model']->emp_name ?: 'unknown employee');
+
         $leadName = $lead->name ?: 'unknown lead create';
 
         $notification = new Notification();
-        $notification->admin_id = $admin->id;
-        $notification->employee_id = null;
+        if ($actor['type'] === 'admin') {
+            $notification->admin_id = $actor['model']->id;
+            $notification->employee_id = null;
+        } else {
+            $notification->admin_id = null;
+            $notification->employee_id = $actor['model']->id;
+        }
         $notification->title = 'Lead create ' . $action;
         $notification->message = sprintf(
-            'admin(%s) %s lead create (%s)',
-            $adminName,
+            '%s(%s) %s lead create (%s)',
+            $actor['type'],
+            $actorName,
             $action,
             $leadName
         );
