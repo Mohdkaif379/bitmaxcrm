@@ -11,8 +11,8 @@ class Admin extends Model
         'permissions' => 'array',
     ];
 
-    public function leadCreates(): HasMany
+    public function createdLeads()
     {
-        return $this->hasMany(Lead_Create::class, 'attended_by');
+        return $this->hasMany(Lead_Create::class, 'created_by');
     }
 }

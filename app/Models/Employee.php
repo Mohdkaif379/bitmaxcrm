@@ -69,4 +69,9 @@ class Employee extends Model
     {
         return $this->hasMany(CandidateInfo::class, 'conducted_by');
     }
+        public function attendedLeads()
+    {
+        return $this->hasMany(Lead_Create::class, 'attended_by');
+    }
+
 }

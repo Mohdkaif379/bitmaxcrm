@@ -32,8 +32,15 @@ class Lead_Create extends Model
         'deleted_at' => 'datetime',
     ];
 
-    public function attendedBy(): BelongsTo
+ // attended_by -> employees table
+    public function attendedBy()
     {
-        return $this->belongsTo(Admin::class, 'attended_by');
+        return $this->belongsTo(Employee::class, 'attended_by');
+    }
+
+    // created_by -> admins table
+    public function createdBy()
+    {
+        return $this->belongsTo(Admin::class, 'created_by');
     }
 }

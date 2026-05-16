@@ -4,6 +4,7 @@ namespace App\Http\Controllers\LeadsCreate;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
+use App\Models\Employee;
 use App\Models\Log;
 use App\Models\Notification;
 use App\Models\Lead_Create;
@@ -26,10 +27,10 @@ class LeadCreateController extends Controller
             'search' => ['nullable', 'string', 'max:255'],
             'status' => ['nullable', 'string', 'max:100'],
             'project_code' => ['nullable', 'string', 'max:255'],
-            'attended_by' => ['nullable', 'integer'],
+            'attended_by' => ['nullable', 'integer', 'exists:employees,id'],
         ]);
 
-        $query = Lead_Create::query()->where('is_deleted', false);
+        $query = Lead_Create::with(['attendedBy', 'createdBy'])->where('is_deleted', false);
 
         if (!empty($validated['status'])) {
             $query->where('status', $validated['status']);
@@ -93,6 +94,7 @@ class LeadCreateController extends Controller
             'project_interested' => ['nullable', 'string', 'max:255'],
             'status' => ['nullable', 'string', 'max:100'],
             'location' => ['nullable', 'string', 'max:255'],
+            'attended_by' => ['nullable', 'integer', 'exists:employees,id'],
         ]);
 
         $lead = new Lead_Create();
@@ -104,10 +106,10 @@ class LeadCreateController extends Controller
         $lead->date = $validated['date'] ?? null;
         $lead->remarks = $validated['remarks'] ?? null;
         $lead->project_interested = $validated['project_interested'] ?? null;
-        $lead->created_by = $admin->full_name ?: (string) $admin->id;
+        $lead->created_by = $admin->id;
         $lead->status = $validated['status'] ?? 'active';
         $lead->location = $validated['location'] ?? null;
-        $lead->attended_by = $admin->id;
+        $lead->attended_by = $validated['attended_by'] ?? null;
         $lead->is_deleted = false;
         $lead->deleted_at = null;
         $lead->save();
@@ -131,7 +133,7 @@ class LeadCreateController extends Controller
             ], 401);
         }
 
-        $lead = Lead_Create::where('is_deleted', false)->find($id);
+        $lead = Lead_Create::with(['attendedBy', 'createdBy'])->where('is_deleted', false)->find($id);
 
         if (!$lead) {
             return response()->json([
@@ -177,6 +179,7 @@ class LeadCreateController extends Controller
             'project_interested' => ['sometimes', 'nullable', 'string', 'max:255'],
             'status' => ['sometimes', 'nullable', 'string', 'max:100'],
             'location' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'attended_by' => ['sometimes', 'nullable', 'integer', 'exists:employees,id'],
         ]);
 
         if (array_key_exists('name', $validated)) {
@@ -209,7 +212,9 @@ class LeadCreateController extends Controller
         if (array_key_exists('location', $validated)) {
             $lead->location = $validated['location'];
         }
-        $lead->attended_by = $admin->id;
+        if (array_key_exists('attended_by', $validated)) {
+            $lead->attended_by = $validated['attended_by'];
+        }
 
         $lead->save();
         $this->logLeadCreateAction($request, $admin, $lead, 'update', 'updated lead create');
