@@ -104,7 +104,7 @@ class EmployeeLoginController extends Controller
             'iss' => config('app.url'),
             'sub' => (string) $employee->id,
             'emp_code' => $employee->emp_code,
-            'role' => 'employee',
+            'role' => $employee->role ?? 'employee',
             'iat' => $now,
             'nbf' => $now,
             'jti' => (string) Str::uuid(),
@@ -192,7 +192,7 @@ class EmployeeLoginController extends Controller
 
     private function resolveEmployeeFromPayload(array $payload): ?Employee
     {
-        if (($payload['role'] ?? null) !== 'employee') {
+        if (!in_array($payload['role'] ?? null, ['employee', 'tl', 'TL'])) {
             return null;
         }
 
