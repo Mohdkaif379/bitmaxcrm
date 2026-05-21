@@ -64,7 +64,7 @@ class EmployeeController extends Controller
             $employee->position = $validated['position'] ?? null;
             $employee->department = $validated['department'] ?? null;
             $employee->status = $validated['status'] ?? 'active';
-            $employee->role = $validated['role'] ?? 'employee';
+            $employee->role = $validated['role'];
             $employee->password = Hash::make($validated['password']);
             $employee->profile_photo = $request->hasFile('profile_photo')
                 ? $request->file('profile_photo')->store('employees/profile_photos', 'public')
