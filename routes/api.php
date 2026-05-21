@@ -39,6 +39,7 @@ use App\Http\Controllers\TourConveyance\TourConevyanceFormController;
 use App\Http\Controllers\Visitor\VisitorController;
 use App\Http\Controllers\VisitorInvited\VisiterInviteController;
 use App\Http\Controllers\ElasticSearch\ElasticSearchController;
+use App\Http\Controllers\TL\TLController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -71,6 +72,7 @@ Route::put('sub-admin/update/{id}', [SubAdminController::class, 'update']);
 Route::delete('sub-admin/delete/{id}', [SubAdminController::class, 'destroy']);
 
 Route::get('employees', [EmployeeController::class, 'index']);
+Route::get('tls', [TLController::class, 'index']);
 Route::post('employee/create', [EmployeeController::class, 'store']);
 Route::get('employees/{id}', [EmployeeController::class, 'show']);
 Route::put('employee/update/{id}', [EmployeeController::class, 'update']); // Use POST for update to handle file uploads
