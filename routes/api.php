@@ -40,6 +40,7 @@ use App\Http\Controllers\Visitor\VisitorController;
 use App\Http\Controllers\VisitorInvited\VisiterInviteController;
 use App\Http\Controllers\ElasticSearch\ElasticSearchController;
 use App\Http\Controllers\Projects\ProjectController;
+use App\Http\Controllers\MYProject\MyProjectController;
 use App\Http\Controllers\TL\TLController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -146,6 +147,8 @@ Route::get('projects/{id}', [ProjectController::class, 'show']);
 Route::post('project/create', [ProjectController::class, 'store']);
 Route::put('project/update/{id}', [ProjectController::class, 'update']);
 Route::delete('project/delete/{id}', [ProjectController::class, 'destroy']);
+Route::get('my-projects', [MyProjectController::class, 'index']);
+Route::put('my-project/update-status/{id}', [MyProjectController::class, 'updateStatus']);
 
 Route::get('task-assignments', [TaskAssignController::class, 'index']);
 Route::post('task-assignment/create', [TaskAssignController::class, 'store']);
