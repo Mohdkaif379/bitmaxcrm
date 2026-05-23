@@ -197,7 +197,7 @@ class MemberAssignController extends Controller
         ]);
     }
 
-    public function update(Request $request, int $id)
+    public function update(Request $request, ?int $id = null)
     {
         $admin = $this->authenticatedAdminFromToken($request);
         if (!$admin) {
@@ -207,6 +207,95 @@ class MemberAssignController extends Controller
             ], 401);
         }
 
+        $validated = $request->validate([
+            'tl_id' => ['nullable', 'integer', 'exists:employees,id'],
+            'employee_id' => ['nullable', 'integer', 'exists:employees,id'],
+            'employee_ids' => ['nullable', 'array', 'min:1'],
+            'employee_ids.*' => ['integer', 'distinct', 'exists:employees,id'],
+        ]);
+
+        $employeeIds = $this->normalizeEmployeeIds($validated);
+        if ($employeeIds !== []) {
+            if (empty($validated['tl_id'])) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'tl_id is required when updating multiple employees.',
+                ], 422);
+            }
+
+            $tl = $this->resolveTeamLead((int) $validated['tl_id']);
+            if (!$tl) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Selected TL is invalid. Please choose an employee with TL role.',
+                ], 422);
+            }
+
+            $processedAssignments = [];
+            $skippedAssignments = [];
+
+            foreach ($employeeIds as $employeeId) {
+                if ((int) $tl->id === (int) $employeeId) {
+                    $skippedAssignments[] = [
+                        'employee_id' => (int) $employeeId,
+                        'message' => 'TL and employee cannot be the same person.',
+                    ];
+                    continue;
+                }
+
+                $employee = $this->resolveAssignableEmployee($employeeId);
+                if (!$employee) {
+                    $skippedAssignments[] = [
+                        'employee_id' => (int) $employeeId,
+                        'message' => 'Selected employee is invalid. TL cannot be assigned as a team member.',
+                    ];
+                    continue;
+                }
+
+                $assignment = MemberAssign::firstOrNew([
+                    'employee_id' => $employee->id,
+                ]);
+
+                $action = $assignment->exists ? 'update' : 'create';
+                $actionText = $assignment->exists
+                    ? 'updated team assignment of employee'
+                    : 'assigned employee';
+
+                $assignment->tl_id = $tl->id;
+                $assignment->employee_id = $employee->id;
+                $assignment->assigned_by = $admin->id;
+                $assignment->save();
+
+                $assignment->load(['tl', 'employee', 'assignedBy']);
+                $this->logMemberAssignAction($request, $admin, $assignment, $action, $actionText);
+                $processedAssignments[] = $this->transformAssignment($assignment);
+            }
+
+            if ($processedAssignments === []) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'No employees were updated for this TL.',
+                    'skipped' => $skippedAssignments,
+                ], 422);
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => count($processedAssignments) === 1
+                    ? 'Team member assignment updated successfully.'
+                    : 'Team member assignments updated successfully.',
+                'data' => $processedAssignments,
+                'skipped' => $skippedAssignments,
+            ]);
+        }
+
+        if (!$id) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Assignment id is required for single update.',
+            ], 422);
+        }
+
         $assignment = MemberAssign::find($id);
         if (!$assignment) {
             return response()->json([
@@ -214,11 +303,6 @@ class MemberAssignController extends Controller
                 'message' => 'Team member assignment not found.',
             ], 404);
         }
-
-        $validated = $request->validate([
-            'tl_id' => ['sometimes', 'required', 'integer', 'exists:employees,id'],
-            'employee_id' => ['sometimes', 'required', 'integer', 'exists:employees,id'],
-        ]);
 
         $tlId = (int) ($validated['tl_id'] ?? $assignment->tl_id);
         $employeeId = (int) ($validated['employee_id'] ?? $assignment->employee_id);

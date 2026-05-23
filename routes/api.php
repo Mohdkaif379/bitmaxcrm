@@ -160,6 +160,7 @@ Route::delete('task-assignment/delete/{id}', [TaskAssignController::class, 'dest
 Route::get('member-assignments', [MemberAssignController::class, 'index']);
 Route::post('member-assignment/create', [MemberAssignController::class, 'store']);
 Route::get('member-assignment/{id}', [MemberAssignController::class, 'show']);
+Route::put('member-assignment/update', [MemberAssignController::class, 'update']);
 Route::put('member-assignment/update/{id}', [MemberAssignController::class, 'update']);
 Route::delete('member-assignment/delete/{id}', [MemberAssignController::class, 'destroy']);
 
