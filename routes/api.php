@@ -25,6 +25,7 @@ use App\Http\Controllers\LeadInteraction\LeadInteractionController;
 use App\Http\Controllers\Leave\LeaveManageController;
 use App\Http\Controllers\Logs\LogsController;
 use App\Http\Controllers\MonthlyAttendnece\MonthlyAttendenceController;
+use App\Http\Controllers\MemberAssign\MemberAssignController;
 use App\Http\Controllers\Notification\NotificationController;
 use App\Http\Controllers\LeadsCreate\LeadCreateController;
 use App\Http\Controllers\Proposal\ProposalController;
@@ -155,6 +156,12 @@ Route::post('task-assignment/create', [TaskAssignController::class, 'store']);
 Route::get('task-assignment/{id}', [TaskAssignController::class, 'show']);
 Route::put('task-assignment/update/{id}', [TaskAssignController::class, 'update']);
 Route::delete('task-assignment/delete/{id}', [TaskAssignController::class, 'destroy']);
+
+Route::get('member-assignments', [MemberAssignController::class, 'index']);
+Route::post('member-assignment/create', [MemberAssignController::class, 'store']);
+Route::get('member-assignment/{id}', [MemberAssignController::class, 'show']);
+Route::put('member-assignment/update/{id}', [MemberAssignController::class, 'update']);
+Route::delete('member-assignment/delete/{id}', [MemberAssignController::class, 'destroy']);
 
 Route::get('stocks', [StockManagementController::class, 'index']);
 Route::post('stock/create', [StockManagementController::class, 'store']);

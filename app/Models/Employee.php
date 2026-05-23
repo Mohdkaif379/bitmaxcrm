@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Employee extends Model
 {
@@ -69,9 +70,19 @@ class Employee extends Model
     {
         return $this->hasMany(CandidateInfo::class, 'conducted_by');
     }
-        public function attendedLeads()
+
+    public function attendedLeads()
     {
         return $this->hasMany(Lead_Create::class, 'attended_by');
     }
 
+    public function teamMemberAssignments(): HasMany
+    {
+        return $this->hasMany(MemberAssign::class, 'tl_id');
+    }
+
+    public function teamLeadAssignment(): HasOne
+    {
+        return $this->hasOne(MemberAssign::class, 'employee_id');
+    }
 }

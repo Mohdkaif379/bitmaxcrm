@@ -15,4 +15,9 @@ class Admin extends Model
     {
         return $this->hasMany(Lead_Create::class, 'created_by');
     }
+
+    public function memberAssignments(): HasMany
+    {
+        return $this->hasMany(MemberAssign::class, 'assigned_by');
+    }
 }
