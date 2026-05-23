@@ -26,6 +26,7 @@ use App\Http\Controllers\Leave\LeaveManageController;
 use App\Http\Controllers\Logs\LogsController;
 use App\Http\Controllers\MonthlyAttendnece\MonthlyAttendenceController;
 use App\Http\Controllers\MemberAssign\MemberAssignController;
+use App\Http\Controllers\MyAssignMember\MyAssignMemberController;
 use App\Http\Controllers\Notification\NotificationController;
 use App\Http\Controllers\LeadsCreate\LeadCreateController;
 use App\Http\Controllers\Proposal\ProposalController;
@@ -241,6 +242,7 @@ Route::get('leaves', [LeaveManageController::class, 'index']);
 Route::put('leave/approve/{id}', [LeaveManageController::class, 'approve']);
 Route::post('leave/update/{id}', [LeaveManageController::class, 'update']);
 Route::delete('leave/delete/{id}', [LeaveManageController::class, 'destroy']);
+Route::get('employee/my-assigned-members', [MyAssignMemberController::class, 'index']);
 Route::get('employee/my-tasks', [MyTaskController::class, 'index']);
 Route::put('employee/my-task/status/{taskId}', [MyTaskController::class, 'updateStatus']);
 
