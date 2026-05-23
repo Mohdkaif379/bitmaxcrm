@@ -54,7 +54,6 @@ class DeviceTokenController extends Controller
             ]
         );
 
-        // Keep the legacy single-token column updated for older code paths.
         if (strlen($validated['fcm_token']) <= 255) {
             $user->newQuery()
                 ->whereKey($user->getKey())

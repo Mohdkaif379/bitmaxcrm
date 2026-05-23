@@ -151,7 +151,8 @@ class EmployeeActivityController extends Controller
             return null;
         }
 
-        if (($payload['role'] ?? null) !== 'employee') {
+         $role = strtolower((string) ($payload['role'] ?? ''));
+        if (!in_array($role, ['employee', 'tl', 'TL', 'team_lead'], true)) {
             return null;
         }
 

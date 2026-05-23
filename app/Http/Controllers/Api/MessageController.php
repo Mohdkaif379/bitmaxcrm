@@ -478,9 +478,9 @@ class MessageController extends Controller
         }
 
        $messages = Message::with('reply')
-    ->where('chat_id', $chatId)
-    ->orderBy('id', 'asc')
-    ->get();
+        ->where('chat_id', $chatId)
+        ->orderBy('id', 'asc')
+        ->get();
 
         return response()->json([
             'status' => true,
