@@ -91,9 +91,8 @@ class EmployeeAttendenceController extends Controller
             ], 401);
         }
 
-        if ($ipRestrictionResponse = $this->ensureRequestFromSyncedOfficeIp($request)) {
-            return $ipRestrictionResponse;
-        }
+        $syncedOfficeIp = $this->getSyncedOfficeIp();
+
 
         $request->validate([
             'profile_image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
@@ -118,7 +117,13 @@ class EmployeeAttendenceController extends Controller
         $markInTime = $now->format('H:i:s');
         $attendance->mark_in = $markInTime;
         $attendance->first_mark_in ??= $markInTime;
-        $attendance->status = $attendance->mark_in <= '09:31:00' ? 'present' : 'halfday';
+        
+        if ($syncedOfficeIp && $request->ip() === $syncedOfficeIp) {
+            $attendance->status = $attendance->mark_in <= '09:31:00' ? 'present' : 'halfday';
+        } else {
+            $attendance->status = 'wfh';
+        }
+
         $attendance->ip_address = $request->ip();
         $attendance->profile_image = $request->file('profile_image')->store('attendence/mark_in', 'public');
         $attendance->save();
@@ -142,9 +147,8 @@ class EmployeeAttendenceController extends Controller
             ], 401);
         }
 
-        if ($ipRestrictionResponse = $this->ensureRequestFromSyncedOfficeIp($request)) {
-            return $ipRestrictionResponse;
-        }
+        // Removed strict office IP restriction for mark out to support WFH
+
 
         $request->validate([
             'profile_image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
@@ -172,9 +176,14 @@ class EmployeeAttendenceController extends Controller
         $markOutTime = now('Asia/Kolkata')->format('H:i:s');
         $attendance->mark_out = $markOutTime;
         $attendance->first_mark_out ??= $markOutTime;
-        $attendance->status = ($attendance->mark_in <= '09:31:00' && $attendance->mark_out >= '18:30:00')
-            ? 'present'
-            : 'halfday';
+
+        // Recalculate status only if not WFH
+        if ($attendance->status !== 'wfh') {
+            $attendance->status = ($attendance->mark_in <= '09:31:00' && $attendance->mark_out >= '18:30:00')
+                ? 'present'
+                : 'halfday';
+        }
+
         $attendance->ip_address = $request->ip();
         $attendance->profile_image = $request->file('profile_image')->store('attendence/mark_out', 'public');
         $attendance->save();
@@ -209,9 +218,8 @@ class EmployeeAttendenceController extends Controller
             ], 401);
         }
 
-        if ($ipRestrictionResponse = $this->ensureRequestFromSyncedOfficeIp($request)) {
-            return $ipRestrictionResponse;
-        }
+        // Removed strict office IP restriction for break to support WFH
+
 
         $request->validate([
             'profile_image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
@@ -269,9 +277,8 @@ class EmployeeAttendenceController extends Controller
             ], 401);
         }
 
-        if ($ipRestrictionResponse = $this->ensureRequestFromSyncedOfficeIp($request)) {
-            return $ipRestrictionResponse;
-        }
+        // Removed strict office IP restriction for break to support WFH
+
 
         $request->validate([
             'profile_image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
@@ -454,31 +461,12 @@ class EmployeeAttendenceController extends Controller
         $log->save();
     }
 
-    private function ensureRequestFromSyncedOfficeIp(Request $request): ?JsonResponse
+    private function getSyncedOfficeIp(): ?string
     {
-        $syncedIp = OfficeIpSetting::query()
+        return OfficeIpSetting::query()
             ->where('is_active', true)
             ->latest('id')
             ->value('ip_address');
-
-        if (empty($syncedIp)) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Office IP is not synced yet. Please contact admin.',
-            ], 422);
-        }
-
-        if ($request->ip() !== $syncedIp) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Attendance can be marked only from synced office IP.',
-                'data' => [
-                    'request_ip' => $request->ip(),
-                    'synced_office_ip' => $syncedIp,
-                ],
-            ], 422);
-        }
-
-        return null;
     }
+
 }
