@@ -37,6 +37,7 @@ use App\Http\Controllers\SubAdmin\SubAdminController;
 use App\Http\Controllers\SyncOfficeIp\SyncOfficeIpController;
 use App\Http\Controllers\Task\TaskController;
 use App\Http\Controllers\TaskAssign\TaskAssignController;
+use App\Http\Controllers\TaskManagement\TaskManagementController;
 use App\Http\Controllers\TourConveyance\TourConevyanceFormController;
 use App\Http\Controllers\Visitor\VisitorController;
 use App\Http\Controllers\VisitorInvited\VisiterInviteController;
@@ -157,6 +158,12 @@ Route::post('task-assignment/create', [TaskAssignController::class, 'store']);
 Route::get('task-assignment/{id}', [TaskAssignController::class, 'show']);
 Route::put('task-assignment/update/{id}', [TaskAssignController::class, 'update']);
 Route::delete('task-assignment/delete/{id}', [TaskAssignController::class, 'destroy']);
+
+Route::get('task-managements', [TaskManagementController::class, 'index']);
+Route::post('task-management/create', [TaskManagementController::class, 'store']);
+Route::get('task-management/{id}', [TaskManagementController::class, 'show']);
+Route::put('task-management/update/{id}', [TaskManagementController::class, 'update']);
+Route::delete('task-management/delete/{id}', [TaskManagementController::class, 'destroy']);
 
 Route::get('member-assignments', [MemberAssignController::class, 'index']);
 Route::post('member-assignment/create', [MemberAssignController::class, 'store']);

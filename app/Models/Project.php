@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Project extends Model
 {
@@ -14,8 +16,13 @@ class Project extends Model
         'tl_id',
     ];
 
-    public function tl()
+    public function tl(): BelongsTo
     {
         return $this->belongsTo(Employee::class, 'tl_id');
+    }
+
+    public function taskManagements(): HasMany
+    {
+        return $this->hasMany(TaskManagement::class, 'project_id');
     }
 }

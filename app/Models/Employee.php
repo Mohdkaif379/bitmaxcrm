@@ -66,6 +66,16 @@ class Employee extends Model
             ->withTimestamps();
     }
 
+    public function assignedTaskManagements(): HasMany
+    {
+        return $this->hasMany(TaskManagement::class, 'assigned_to');
+    }
+
+    public function tlProjects(): HasMany
+    {
+        return $this->hasMany(Project::class, 'tl_id');
+    }
+
     public function candidates()
     {
         return $this->hasMany(CandidateInfo::class, 'conducted_by');
