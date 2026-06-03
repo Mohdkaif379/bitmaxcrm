@@ -488,6 +488,104 @@ class MessageController extends Controller
         ]);
     }
 
+    // LIVE GET CHAT MESSAGES
+    public function live(Request $request, $chatId)
+    {
+        $user = $request->user() ?? $request->auth_admin;
+
+        if (!$user) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthenticated'
+            ], 401);
+        }
+
+        $role = $user->role ?? 'employee';
+
+        $participant = ChatParticipant::where('chat_id', $chatId)
+            ->where('user_id', $user->id)
+            ->where('user_type', $role)
+            ->first();
+
+        if (!$participant) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthorized access'
+            ], 403);
+        }
+
+        $message = Message::with(['reply:id,message,sender_id,sender_type,message_type'])
+            ->where('chat_id', $chatId)
+            ->latest('id')
+            ->first();
+
+        return response()->json([
+            'status' => true,
+            'message' => $message
+                ? 'Latest message fetched successfully'
+                : 'No message found',
+            'data' => $message
+                ? $this->formatMessageForApi($message)
+                : null,
+            'meta' => [
+                'chat_id' => (int) $chatId,
+                'latest_message_id' => $message ? $message->id : null,
+                'server_time' => now()->toISOString(),
+            ],
+        ]);
+    }
+
+    private function formatMessageForApi(Message $message): array
+    {
+        $replyMessage = null;
+
+        if ($message->reply) {
+            $replyMessage = [
+                'id' => $message->reply->id,
+                'message' => $message->reply->message,
+                'sender_id' => $message->reply->sender_id,
+                'sender_type' => $message->reply->sender_type,
+                'message_type' => $message->reply->message_type,
+            ];
+        }
+
+        return [
+            'id' => $message->id,
+            'chat_id' => $message->chat_id,
+            'sender_id' => $message->sender_id,
+            'sender_type' => $message->sender_type,
+            'message' => $message->message,
+            'message_type' => $message->message_type,
+            'file_url' => $message->file ? asset('storage/' . $message->file) : null,
+            'file_name' => $message->file_name,
+            'mime_type' => $message->mime_type,
+            'file_size' => $message->file_size,
+            'thumbnail_url' => $message->thumbnail ? asset('storage/' . $message->thumbnail) : null,
+            'reply_to' => $message->reply_to,
+            'reply_message' => $replyMessage,
+            'is_forwarded' => (bool) $message->is_forwarded,
+            'is_edited' => (bool) $message->is_edited,
+            'is_deleted' => (bool) $message->is_deleted,
+            'delivered_at' => $this->formatDateTimeForApi($message->delivered_at),
+            'seen_at' => $this->formatDateTimeForApi($message->seen_at),
+            'created_at' => $this->formatDateTimeForApi($message->created_at),
+            'updated_at' => $this->formatDateTimeForApi($message->updated_at),
+        ];
+    }
+
+    private function formatDateTimeForApi($dateTime): ?string
+    {
+        if (!$dateTime) {
+            return null;
+        }
+
+        if ($dateTime instanceof \DateTimeInterface) {
+            return $dateTime->format(\DateTimeInterface::ATOM);
+        }
+
+        return \Illuminate\Support\Carbon::parse($dateTime)->toISOString();
+    }
+
     // 🔥 MARK AS READ
     public function markRead(Request $request)
     {

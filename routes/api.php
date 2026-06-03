@@ -271,6 +271,7 @@ Route::middleware('jwt.auth')->group(function () {
     Route::post('/messages/read', [MessageController::class, 'markRead']);
     // GET MESSAGES
     Route::get('/chats/{chatId}/messages', [MessageController::class, 'list']);
+    Route::get('/chats/{chatId}/messages/live', [MessageController::class, 'live']);
     // TYPING INDICATORS
     Route::post('/messages/typing', [MessageController::class, 'typing']);
     Route::post('/messages/stop-typing', [MessageController::class, 'stopTyping']);
