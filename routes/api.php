@@ -255,6 +255,7 @@ Route::get('employee/my-tasks', [MyTaskController::class, 'index']);
 Route::put('employee/my-task/status/{taskId}', [MyTaskController::class, 'updateStatus']);
 Route::get('employee/my-task-managements', [MyTaskManagementController::class, 'index']);
 Route::get('employee/my-task-management/{id}', [MyTaskManagementController::class, 'show']);
+Route::put('employee/my-task-management/update/{id}', [MyTaskManagementController::class, 'update']);
 
 
 Route::post('attendance/mark-leave', [AttendenceController::class, 'markLeaveByEmployee']);
