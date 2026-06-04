@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -32,5 +33,10 @@ class TaskManagement extends Model
     public function assignedEmployee(): BelongsTo
     {
         return $this->belongsTo(Employee::class, 'assigned_to');
+    }
+
+    public function scopeAssignedToEmployee(Builder $query, int $employeeId): Builder
+    {
+        return $query->where('assigned_to', $employeeId);
     }
 }

@@ -44,6 +44,7 @@ use App\Http\Controllers\VisitorInvited\VisiterInviteController;
 use App\Http\Controllers\ElasticSearch\ElasticSearchController;
 use App\Http\Controllers\Projects\ProjectController;
 use App\Http\Controllers\MYProject\MyProjectController;
+use App\Http\Controllers\MyTaskManagement\MyTaskManagementController;
 use App\Http\Controllers\TL\TLController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -252,6 +253,8 @@ Route::delete('leave/delete/{id}', [LeaveManageController::class, 'destroy']);
 Route::get('employee/my-assigned-members', [MyAssignMemberController::class, 'index']);
 Route::get('employee/my-tasks', [MyTaskController::class, 'index']);
 Route::put('employee/my-task/status/{taskId}', [MyTaskController::class, 'updateStatus']);
+Route::get('employee/my-task-managements', [MyTaskManagementController::class, 'index']);
+Route::get('employee/my-task-management/{id}', [MyTaskManagementController::class, 'show']);
 
 
 Route::post('attendance/mark-leave', [AttendenceController::class, 'markLeaveByEmployee']);
