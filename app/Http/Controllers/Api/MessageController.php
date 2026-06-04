@@ -519,6 +519,19 @@ class MessageController extends Controller
             ->latest('id')
             ->first();
 
+        // 🔥 Generate Ably token for frontend real-time connection
+        $ablyAuth = null;
+        try {
+            $ably = new AblyService();
+            $clientId = "{$role}:{$user->id}";
+            $ablyAuth = [
+                'token_request' => $ably->createTokenRequest($clientId),
+                'client_id' => $clientId
+            ];
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Ably token generation failed in live(): ' . $e->getMessage());
+        }
+
         return response()->json([
             'status' => true,
             'message' => $message
@@ -527,6 +540,7 @@ class MessageController extends Controller
             'data' => $message
                 ? $this->formatMessageForApi($message)
                 : null,
+            'ably_auth' => $ablyAuth,
             'meta' => [
                 'chat_id' => (int) $chatId,
                 'latest_message_id' => $message ? $message->id : null,
