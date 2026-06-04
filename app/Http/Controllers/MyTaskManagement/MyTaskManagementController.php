@@ -103,6 +103,42 @@ class MyTaskManagementController extends Controller
         ]);
     }
 
+    public function update(Request $request, int $id)
+    {
+        $employee = $this->authenticatedEmployeeFromToken($request);
+        if (!$employee) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthorized. Valid employee token is required.',
+            ], 401);
+        }
+
+        $task = TaskManagement::assignedToEmployee((int) $employee->id)
+            ->where('id', $id)
+            ->first();
+
+        if (!$task) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Task management record not found for this employee.',
+            ], 404);
+        }
+
+        $validated = $request->validate([
+            'status' => ['required', 'string', 'max:255'],
+        ]);
+
+        $task->update([
+            'status' => $validated['status'],
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Task status updated successfully.',
+            'data' => $this->transformTask($task->fresh(['project.tl', 'assignedEmployee'])),
+        ]);
+    }
+
     private function transformTask(TaskManagement $task): array
     {
         return [
@@ -114,6 +150,7 @@ class MyTaskManagementController extends Controller
             'start_date' => $task->start_date,
             'end_date' => $task->end_date,
             'assigned_to' => (int) $task->assigned_to,
+            'status' => $task->status,
             'created_at' => $task->created_at,
             'updated_at' => $task->updated_at,
             'project' => $task->project ? [

@@ -104,6 +104,7 @@ class TaskManagementController extends Controller
             return $response;
         }
 
+        $validated['status'] = 'pending';
         $task = TaskManagement::create($validated);
         $task->load(['project.tl', 'assignedEmployee']);
 
@@ -214,6 +215,7 @@ class TaskManagementController extends Controller
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
             'assigned_to' => [$required, 'integer', 'exists:employees,id'],
+            'status' => ['nullable', 'string', 'max:255'],
         ];
     }
 
@@ -270,6 +272,7 @@ class TaskManagementController extends Controller
             'start_date' => $task->start_date,
             'end_date' => $task->end_date,
             'assigned_to' => (int) $task->assigned_to,
+            'status' => $task->status,
             'created_at' => $task->created_at,
             'updated_at' => $task->updated_at,
             'project' => $task->project ? [

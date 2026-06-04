@@ -18,6 +18,7 @@ class TaskManagement extends Model
         'start_date',
         'end_date',
         'assigned_to',
+        'status',
     ];
 
     protected $casts = [

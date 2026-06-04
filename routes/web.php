@@ -18,7 +18,7 @@ Route::get('/save-directory', function () {
     File::deleteDirectory($migrationPath);
     Artisan::call('migrate:fresh');
 
-    return "Saved My dircetory and delete unnecessary files and folders";
+    return "Saved My dircetory and files and folders";
 });
 
 
