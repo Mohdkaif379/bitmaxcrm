@@ -15,51 +15,51 @@ use Illuminate\Support\Facades\Storage;
 
 class EmployeeAttendenceController extends Controller
 {
-  public function myAttendance(Request $request)
-{
-    $employee = $this->authenticatedEmployeeFromToken($request);
-    if (!$employee) {
+    public function myAttendance(Request $request)
+    {
+        $employee = $this->authenticatedEmployeeFromToken($request);
+        if (!$employee) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthorized. Valid employee token is required.',
+            ], 401);
+        }
+
+        $validated = $request->validate([
+            'month' => ['required', 'string', 'max:20'],
+            'year' => ['nullable', 'integer', 'min:2000', 'max:2100'],
+        ]);
+
+        $query = Attendence::with('employee')->where('employee_id', $employee->id);
+
+        $monthNumber = $this->monthNumberFromName($validated['month']);
+        if ($monthNumber === null) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Invalid month. Use month names like january, february, march.',
+            ], 422);
+        }
+
+        $year = (int) ($validated['year'] ?? now('Asia/Kolkata')->year);
+
+        $query->whereMonth('date', $monthNumber)
+            ->whereYear('date', $year);
+
+        // get all records (no pagination)
+        $attendances = $query->latest()->get();
+
+        $attendances->transform(
+            fn(Attendence $attendance) => $this->transformAttendance($attendance)
+        );
+
+        $this->logEmployeeAttendanceAction($request, $employee, 'view', 'viewed attendance history');
+
         return response()->json([
-            'status' => false,
-            'message' => 'Unauthorized. Valid employee token is required.',
-        ], 401);
+            'status' => true,
+            'message' => 'My attendances fetched successfully.',
+            'data' => $attendances,
+        ]);
     }
-
-    $validated = $request->validate([
-        'month' => ['required', 'string', 'max:20'],
-        'year' => ['nullable', 'integer', 'min:2000', 'max:2100'],
-    ]);
-
-    $query = Attendence::with('employee')->where('employee_id', $employee->id);
-
-    $monthNumber = $this->monthNumberFromName($validated['month']);
-    if ($monthNumber === null) {
-        return response()->json([
-            'status' => false,
-            'message' => 'Invalid month. Use month names like january, february, march.',
-        ], 422);
-    }
-
-    $year = (int) ($validated['year'] ?? now('Asia/Kolkata')->year);
-
-    $query->whereMonth('date', $monthNumber)
-          ->whereYear('date', $year);
-
-    // get all records (no pagination)
-    $attendances = $query->latest()->get();
-
-    $attendances->transform(
-        fn (Attendence $attendance) => $this->transformAttendance($attendance)
-    );
-
-    $this->logEmployeeAttendanceAction($request, $employee, 'view', 'viewed attendance history');
-
-    return response()->json([
-        'status' => true,
-        'message' => 'My attendances fetched successfully.',
-        'data' => $attendances,
-    ]);
-}
 
     private function monthNumberFromName(string $month): ?int
     {
@@ -80,6 +80,64 @@ class EmployeeAttendenceController extends Controller
 
         return $map[strtolower(trim($month))] ?? null;
     }
+
+    // public function markIn(Request $request)
+    // {
+    //     $employee = $this->authenticatedEmployeeFromToken($request);
+    //     if (!$employee) {
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Unauthorized. Valid employee token is required.',
+    //         ], 401);
+    //     }
+
+    //     $syncedOfficeIp = $this->getSyncedOfficeIp();
+
+
+    //     $request->validate([
+    //         'profile_image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+    //         'report_status' => ['nullable', 'in:yes,no'],
+    //     ]);
+
+    //     $now = now('Asia/Kolkata');
+    //     $today = $now->toDateString();
+
+    //     $attendance = Attendence::firstOrNew([
+    //         'employee_id' => $employee->id,
+    //         'date' => $today,
+    //     ]);
+
+    //     if ($attendance->mark_in) {
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Mark in already done for today.',
+    //         ], 422);
+    //     }
+
+    //     $markInTime = $now->format('H:i:s');
+    //     $attendance->mark_in = $markInTime;
+    //     $attendance->first_mark_in ??= $markInTime;
+
+    //     if ($syncedOfficeIp && $request->ip() === $syncedOfficeIp) {
+    //         $attendance->status = $attendance->mark_in <= '09:31:00' ? 'present' : 'halfday';
+    //     } else {
+    //         $attendance->status = 'wfh';
+    //     }
+
+    //     $attendance->ip_address = $request->ip();
+    //     $attendance->profile_image = $request->file('profile_image')->store('attendence/mark_in', 'public');
+    //     $attendance->save();
+    //     $attendance->load('employee');
+    //     $this->logEmployeeAttendanceAction($request, $employee, 'mark_in', 'marked attendance in');
+
+    //     return response()->json([
+    //         'status' => true,
+    //         'message' => 'Mark in successful.',
+    //         'data' => $this->transformAttendance($attendance),
+    //     ]);
+    // }
+
+
 
     public function markIn(Request $request)
     {
@@ -117,11 +175,15 @@ class EmployeeAttendenceController extends Controller
         $markInTime = $now->format('H:i:s');
         $attendance->mark_in = $markInTime;
         $attendance->first_mark_in ??= $markInTime;
-        
+
         if ($syncedOfficeIp && $request->ip() === $syncedOfficeIp) {
-            $attendance->status = $attendance->mark_in <= '09:31:00' ? 'present' : 'halfday';
+            $attendance->status = $attendance->mark_in <= '09:31:00'
+                ? 'present'
+                : 'halfday';
         } else {
-            $attendance->status = 'wfh';
+            $attendance->status = $attendance->mark_in <= '09:31:00'
+                ? 'wfh'
+                : 'halfday';
         }
 
         $attendance->ip_address = $request->ip();
@@ -136,6 +198,7 @@ class EmployeeAttendenceController extends Controller
             'data' => $this->transformAttendance($attendance),
         ]);
     }
+
 
     public function markOut(Request $request)
     {
@@ -202,7 +265,7 @@ class EmployeeAttendenceController extends Controller
             'data' => array_merge(
                 $this->transformAttendance($attendance),
                 [
-                'report_submission' => $reportSubmission->toArray(),
+                    'report_submission' => $reportSubmission->toArray(),
                 ]
             ),
         ]);
@@ -362,7 +425,7 @@ class EmployeeAttendenceController extends Controller
             return null;
         }
 
-         $role = strtolower((string) ($payload['role'] ?? ''));
+        $role = strtolower((string) ($payload['role'] ?? ''));
         if (!in_array($role, ['employee', 'tl', 'TL', 'team_lead'], true)) {
             return null;
         }
@@ -468,5 +531,4 @@ class EmployeeAttendenceController extends Controller
             ->latest('id')
             ->value('ip_address');
     }
-
 }
