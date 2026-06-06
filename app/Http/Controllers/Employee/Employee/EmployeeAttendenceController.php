@@ -200,6 +200,80 @@ class EmployeeAttendenceController extends Controller
     }
 
 
+    // public function markOut(Request $request)
+    // {
+    //     $employee = $this->authenticatedEmployeeFromToken($request);
+    //     if (!$employee) {
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Unauthorized. Valid employee token is required.',
+    //         ], 401);
+    //     }
+
+    //     // Removed strict office IP restriction for mark out to support WFH
+
+
+    //     $request->validate([
+    //         'profile_image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+    //     ]);
+
+    //     $today = now('Asia/Kolkata')->toDateString();
+    //     $attendance = Attendence::where('employee_id', $employee->id)
+    //         ->whereDate('date', $today)
+    //         ->first();
+
+    //     if (!$attendance || !$attendance->mark_in) {
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Please mark in first.',
+    //         ], 422);
+    //     }
+
+    //     if ($attendance->mark_out) {
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Mark out already done for today.',
+    //         ], 422);
+    //     }
+
+    //     $markOutTime = now('Asia/Kolkata')->format('H:i:s');
+    //     $attendance->mark_out = $markOutTime;
+    //     $attendance->first_mark_out ??= $markOutTime;
+
+    //     // Recalculate status only if not WFH
+    //     if ($attendance->status !== 'wfh') {
+    //         $attendance->status = ($attendance->mark_in <= '09:31:00' && $attendance->mark_out >= '18:30:00')
+    //             ? 'present'
+    //             : 'halfday';
+    //     }
+
+    //     $attendance->ip_address = $request->ip();
+    //     $attendance->profile_image = $request->file('profile_image')->store('attendence/mark_out', 'public');
+    //     $attendance->save();
+
+    //     $reportSubmission = ReportSubmission::create([
+    //         'employee_id' => $employee->id,
+    //         'report_status' => $request->input('report_status', 'no'),
+    //     ]);
+
+    //     $attendance->load('employee');
+    //     $this->logEmployeeAttendanceAction($request, $employee, 'mark_out', 'marked attendance out');
+
+    //     return response()->json([
+    //         'status' => true,
+    //         'message' => 'Mark out successful.',
+    //         'data' => array_merge(
+    //             $this->transformAttendance($attendance),
+    //             [
+    //                 'report_submission' => $reportSubmission->toArray(),
+    //             ]
+    //         ),
+    //     ]);
+    // }
+
+
+
+
     public function markOut(Request $request)
     {
         $employee = $this->authenticatedEmployeeFromToken($request);
@@ -241,8 +315,12 @@ class EmployeeAttendenceController extends Controller
         $attendance->first_mark_out ??= $markOutTime;
 
         // Recalculate status only if not WFH
-        if ($attendance->status !== 'wfh') {
-            $attendance->status = ($attendance->mark_in <= '09:31:00' && $attendance->mark_out >= '18:30:00')
+        $isFullDay = $attendance->mark_out >= '18:30:00';
+
+        if ($attendance->status === 'wfh') {
+            $attendance->status = $isFullDay ? 'wfh' : 'halfday';
+        } else {
+            $attendance->status = ($attendance->mark_in <= '09:31:00' && $isFullDay)
                 ? 'present'
                 : 'halfday';
         }
@@ -270,6 +348,8 @@ class EmployeeAttendenceController extends Controller
             ),
         ]);
     }
+
+
 
     public function breakStart(Request $request)
     {
