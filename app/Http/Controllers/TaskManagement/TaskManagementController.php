@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\TaskManagement;
 
 use App\Http\Controllers\Controller;
+use App\Models\Admin;
 use App\Models\Employee;
 use App\Models\MemberAssign;
 use App\Models\Project;
@@ -15,11 +16,11 @@ class TaskManagementController extends Controller
 {
     public function index(Request $request)
     {
-        $tl = $this->authenticatedTlFromToken($request);
-        if (!$tl) {
+        $actor = $this->authenticatedTaskManagerFromToken($request);
+        if (!$actor) {
             return response()->json([
                 'status' => false,
-                'message' => 'Unauthorized. Valid TL token is required.',
+                'message' => 'Unauthorized. Valid TL or admin token is required.',
             ], 401);
         }
 
@@ -31,10 +32,13 @@ class TaskManagementController extends Controller
             'type' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $query = TaskManagement::with(['project.tl', 'assignedEmployee'])
-            ->whereHas('project', function ($projectQuery) use ($tl) {
-                $projectQuery->where('tl_id', $tl->id);
+        $query = TaskManagement::with(['project.tl', 'assignedEmployee']);
+
+        if ($actor instanceof Employee) {
+            $query->whereHas('project', function ($projectQuery) use ($actor) {
+                $projectQuery->where('tl_id', $actor->id);
             });
+        }
 
         if (!empty($validated['project_id'])) {
             $query->where('project_id', (int) $validated['project_id']);
@@ -90,17 +94,17 @@ class TaskManagementController extends Controller
 
     public function store(Request $request)
     {
-        $tl = $this->authenticatedTlFromToken($request);
-        if (!$tl) {
+        $actor = $this->authenticatedTaskManagerFromToken($request);
+        if (!$actor) {
             return response()->json([
                 'status' => false,
-                'message' => 'Only TL can assign task management records.',
+                'message' => 'Unauthorized. Valid TL or admin token is required.',
             ], 401);
         }
 
         $validated = $request->validate($this->validationRules());
 
-        if ($response = $this->ensureTlCanManageTask($tl, (int) $validated['project_id'], (int) $validated['assigned_to'])) {
+        if ($response = $this->ensureTaskManagerCanManageTask($actor, (int) $validated['project_id'], (int) $validated['assigned_to'])) {
             return $response;
         }
 
@@ -117,15 +121,15 @@ class TaskManagementController extends Controller
 
     public function show(Request $request, int $id)
     {
-        $tl = $this->authenticatedTlFromToken($request);
-        if (!$tl) {
+        $actor = $this->authenticatedTaskManagerFromToken($request);
+        if (!$actor) {
             return response()->json([
                 'status' => false,
-                'message' => 'Unauthorized. Valid TL token is required.',
+                'message' => 'Unauthorized. Valid TL or admin token is required.',
             ], 401);
         }
 
-        $task = $this->findTaskForTl($id, $tl);
+        $task = $this->findTaskForActor($id, $actor);
         if (!$task) {
             return response()->json([
                 'status' => false,
@@ -142,15 +146,15 @@ class TaskManagementController extends Controller
 
     public function update(Request $request, int $id)
     {
-        $tl = $this->authenticatedTlFromToken($request);
-        if (!$tl) {
+        $actor = $this->authenticatedTaskManagerFromToken($request);
+        if (!$actor) {
             return response()->json([
                 'status' => false,
-                'message' => 'Only TL can update task management records.',
+                'message' => 'Unauthorized. Valid TL or admin token is required.',
             ], 401);
         }
 
-        $task = $this->findTaskForTl($id, $tl);
+        $task = $this->findTaskForActor($id, $actor);
         if (!$task) {
             return response()->json([
                 'status' => false,
@@ -163,7 +167,7 @@ class TaskManagementController extends Controller
         $projectId = (int) ($validated['project_id'] ?? $task->project_id);
         $assignedTo = (int) ($validated['assigned_to'] ?? $task->assigned_to);
 
-        if ($response = $this->ensureTlCanManageTask($tl, $projectId, $assignedTo)) {
+        if ($response = $this->ensureTaskManagerCanManageTask($actor, $projectId, $assignedTo)) {
             return $response;
         }
 
@@ -179,15 +183,15 @@ class TaskManagementController extends Controller
 
     public function destroy(Request $request, int $id)
     {
-        $tl = $this->authenticatedTlFromToken($request);
-        if (!$tl) {
+        $actor = $this->authenticatedTaskManagerFromToken($request);
+        if (!$actor) {
             return response()->json([
                 'status' => false,
-                'message' => 'Only TL can delete task management records.',
+                'message' => 'Unauthorized. Valid TL or admin token is required.',
             ], 401);
         }
 
-        $task = $this->findTaskForTl($id, $tl);
+        $task = $this->findTaskForActor($id, $actor);
         if (!$task) {
             return response()->json([
                 'status' => false,
@@ -249,6 +253,45 @@ class TaskManagementController extends Controller
         }
 
         return null;
+    }
+
+    private function ensureAdminCanManageTask(Admin $admin, int $projectId, int $assignedTo): ?\Illuminate\Http\JsonResponse
+    {
+        $project = Project::find($projectId);
+        if (!$project) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Project not found.',
+            ], 404);
+        }
+
+        $employee = Employee::find($assignedTo);
+        if (!$employee) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Assigned employee not found.',
+            ], 404);
+        }
+
+        return null;
+    }
+
+    private function ensureTaskManagerCanManageTask(Admin|Employee $actor, int $projectId, int $assignedTo): ?\Illuminate\Http\JsonResponse
+    {
+        if ($actor instanceof Admin) {
+            return $this->ensureAdminCanManageTask($actor, $projectId, $assignedTo);
+        }
+
+        return $this->ensureTlCanManageTask($actor, $projectId, $assignedTo);
+    }
+
+    private function findTaskForActor(int $id, Admin|Employee $actor): ?TaskManagement
+    {
+        if ($actor instanceof Admin) {
+            return TaskManagement::with(['project.tl', 'assignedEmployee'])->find($id);
+        }
+
+        return $this->findTaskForTl($id, $actor);
     }
 
     private function findTaskForTl(int $id, Employee $tl): ?TaskManagement
@@ -328,6 +371,36 @@ class TaskManagementController extends Controller
         }
 
         return $employee;
+    }
+
+    private function authenticatedAdminFromToken(Request $request): ?Admin
+    {
+        $token = $request->bearerToken();
+        if (!$token) {
+            return null;
+        }
+
+        $payload = $this->decodeJwtToken($token);
+        if (!$payload) {
+            return null;
+        }
+
+        $role = strtolower((string) ($payload['role'] ?? ''));
+        if (!in_array($role, ['admin', 'sub_admin', 'subadmin'], true)) {
+            return null;
+        }
+
+        $adminId = (int) ($payload['sub'] ?? 0);
+        if ($adminId <= 0) {
+            return null;
+        }
+
+        return Admin::find($adminId);
+    }
+
+    private function authenticatedTaskManagerFromToken(Request $request): Admin|Employee|null
+    {
+        return $this->authenticatedTlFromToken($request) ?? $this->authenticatedAdminFromToken($request);
     }
 
     private function decodeJwtToken(string $token): ?array
