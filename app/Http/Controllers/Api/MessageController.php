@@ -381,7 +381,7 @@ class MessageController extends Controller
                                         'body'  => $messagePreview,
                                     ],
                                     'android' => [
-                                        'priority'       => 'HIGH',
+                                        'priority'       => 'high',
                                         'ttl'            => '0s',
                                         'direct_boot_ok' => true,
                                         'notification'   => [
