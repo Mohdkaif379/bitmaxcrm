@@ -381,8 +381,10 @@ class MessageController extends Controller
                                         'body'  => $messagePreview,
                                     ],
                                     'android' => [
-                                        'priority' => 'HIGH',
-                                        'notification' => [
+                                        'priority'       => 'HIGH',
+                                        'ttl'            => '0s',
+                                        'direct_boot_ok' => true,
+                                        'notification'   => [
                                             'channel_id' => 'btx_high_importance_channel',
                                             'sound'      => 'default',
                                         ],
