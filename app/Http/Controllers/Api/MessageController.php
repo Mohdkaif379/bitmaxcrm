@@ -380,6 +380,23 @@ class MessageController extends Controller
                                         'title' => "New Message from {$senderName}",
                                         'body'  => $messagePreview,
                                     ],
+                                    'android' => [
+                                        'priority' => 'HIGH',
+                                        'notification' => [
+                                            'channel_id' => 'btx_high_importance_channel',
+                                            'sound'      => 'default',
+                                        ],
+                                    ],
+                                    'apns' => [
+                                        'headers' => [
+                                            'apns-priority' => '10',
+                                        ],
+                                        'payload' => [
+                                            'aps' => [
+                                                'sound' => 'default',
+                                            ],
+                                        ],
+                                    ],
                                     'data' => [
                                         'chat_id'    => (string)$request->chat_id,
                                         'message_id' => (string)$message->id,
