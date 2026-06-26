@@ -387,6 +387,7 @@ class MessageController extends Controller
                                         'notification'   => [
                                             'channel_id' => 'btx_high_importance_channel',
                                             'sound'      => 'default',
+                                            'event_time' => $message->created_at->utc()->toIso8601String(),
                                         ],
                                     ],
                                     'apns' => [
